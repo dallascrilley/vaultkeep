@@ -119,7 +119,7 @@ export function createRunCommand(
           const secret = await Promise.resolve(
             deps.getSecret(reference, vault, field)
           );
-          if (!secret) {
+          if (secret === null) {
             throw new OpError(
               `Secret "${reference}" not found in vault "${vault}"`,
               1
