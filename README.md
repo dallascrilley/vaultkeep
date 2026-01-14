@@ -71,6 +71,9 @@ ops list --vault Work
 # Search items
 ops list --search "github"
 
+# Dedicated search command
+ops search "github"
+
 # JSON output
 ops list --json
 ```
@@ -163,6 +166,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `get <name>` | Get a secret | `-v, --vault`, `-f, --field`, `-s, --silent` |
 | `set <name>` | Store a secret | `-v, --vault`, `-f, --field`, `--value` |
 | `list` | List vault items | `-v, --vault`, `-s, --search`, `-j, --json`, `--favorites` |
+| `search <query>` | Search items by title | `-v, --vault`, `-j, --json` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
 
