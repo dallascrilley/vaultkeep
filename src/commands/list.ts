@@ -39,7 +39,8 @@ export async function listCommand(options: ListOptions): Promise<void> {
       : options.search
       ? `Searching for "${options.search}" in vault "${vault}"...`
       : `Loading items from vault "${vault}"...`;
-    const spinner = createSpinner(loadingMsg, quiet);
+    const quietSpinner = Boolean(quiet || options.json || options.plain);
+    const spinner = createSpinner(loadingMsg, quietSpinner);
 
     const items = options.favorites
       ? listFavorites(vault)
@@ -47,7 +48,9 @@ export async function listCommand(options: ListOptions): Promise<void> {
       ? searchItems(options.search, vault)
       : listItems(vault);
 
-    spinner.stop();
+    if (!quietSpinner) {
+      spinner.stop();
+    }
 
     if (items.length === 0) {
       if (options.json) {

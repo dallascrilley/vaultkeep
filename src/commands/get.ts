@@ -49,13 +49,16 @@ export async function getCommand(
 
     applyColorConfig(noColor);
 
-    const spinner = createSpinner('Fetching secret from 1Password...', quiet);
+    const quietSpinner = quiet || outputMode !== 'human';
+    const spinner = createSpinner('Fetching secret from 1Password...', quietSpinner);
 
     // Try to get the secret
     const secret = getSecret(name, vault, field);
 
     if (secret) {
-      spinner.succeed(chalk.green('Secret retrieved!'));
+      if (!quietSpinner) {
+        spinner.succeed(chalk.green('Secret retrieved!'));
+      }
 
       if (outputMode === 'json') {
         console.log(JSON.stringify({ name, vault, field, value: secret }, null, 2));
@@ -75,7 +78,9 @@ export async function getCommand(
     }
 
     // Secret not found - offer to create it
-    spinner.fail(chalk.yellow(`Secret "${name}" not found in vault "${vault}"`));
+    if (!quietSpinner) {
+      spinner.fail(chalk.yellow(`Secret "${name}" not found in vault "${vault}"`));
+    }
 
     const canPrompt = !noInput && isInteractiveInput();
 
@@ -110,9 +115,11 @@ export async function getCommand(
     ]);
 
     // Store the secret
-    const storeSpinner = createSpinner('Storing secret in 1Password...', quiet);
+    const storeSpinner = createSpinner('Storing secret in 1Password...', quietSpinner);
     setSecret(name, valueAnswer.value, vault, field);
-    storeSpinner.succeed(chalk.green('Secret stored successfully!'));
+    if (!quietSpinner) {
+      storeSpinner.succeed(chalk.green('Secret stored successfully!'));
+    }
 
     if (!quiet) {
       console.log(chalk.cyan('\nYou can retrieve it anytime with:'));

@@ -27,13 +27,17 @@ export async function exportCommand(options: ExportOptions): Promise<void> {
 
     applyColorConfig(noColor);
 
-    const spinner = createSpinner(`Exporting secrets from vault "${vault}"...`, quiet);
+    const outputToStdout = !options.output || options.output === '-';
+    const quietSpinner = quiet || outputToStdout || format === 'json';
+    const spinner = createSpinner(`Exporting secrets from vault "${vault}"...`, quietSpinner);
 
     // Get all items from vault
     const items = listItems(vault);
 
     if (items.length === 0) {
-      spinner.warn(chalk.yellow('No items found in vault.'));
+      if (!quietSpinner) {
+        spinner.warn(chalk.yellow('No items found in vault.'));
+      }
       return;
     }
 
@@ -60,7 +64,9 @@ export async function exportCommand(options: ExportOptions): Promise<void> {
       }
     }
 
-    spinner.stop();
+    if (!quietSpinner) {
+      spinner.stop();
+    }
 
     // Format output
     let output: string;
@@ -80,8 +86,6 @@ export async function exportCommand(options: ExportOptions): Promise<void> {
         })
         .join('\n');
     }
-
-    const outputToStdout = !options.output || options.output === '-';
 
     // Output to file or stdout
     if (!outputToStdout) {
