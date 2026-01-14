@@ -8,8 +8,7 @@
     "ops": "./dist/index.js"
   },
   "scripts": {
-    "build:bundle": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/ops.cjs",
-    "build:bin": "npm run build:bundle && pkg dist/ops.cjs --targets node18-macos-arm64 --output bin/ops",
+    "build:bin": "bun build --compile src/index.ts --outfile bin/ops",
     "build": "tsc",
     "dev": "ts-node src/index.ts",
     "typecheck": "tsc --noEmit",
@@ -34,8 +33,6 @@
   "devDependencies": {
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.10.6",
-    "esbuild": "^0.27.2",
-    "pkg": "^5.8.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
