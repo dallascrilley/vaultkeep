@@ -17,6 +17,8 @@ export async function listCommand(options: ListOptions): Promise<void> {
     const vault = options.vault || 'Private';
     const loadingMsg = options.favorites
       ? `Loading favorites from vault "${vault}"...`
+      : options.search
+      ? `Searching for "${options.search}" in vault "${vault}"...`
       : `Loading items from vault "${vault}"...`;
     const spinner = ora(loadingMsg).start();
 
@@ -31,6 +33,8 @@ export async function listCommand(options: ListOptions): Promise<void> {
     if (items.length === 0) {
       const msg = options.favorites
         ? 'No favorites found. Mark items as favorites in 1Password to see them here.'
+        : options.search
+        ? `No items found matching "${options.search}".`
         : 'No items found.';
       console.log(chalk.yellow(msg));
       return;
@@ -44,6 +48,8 @@ export async function listCommand(options: ListOptions): Promise<void> {
     // Display as table
     const header = options.favorites
       ? `\nFavorites in vault "${vault}":\n`
+      : options.search
+      ? `\nSearch results for "${options.search}" in vault "${vault}":\n`
       : `\nItems in vault "${vault}":\n`;
     console.log(chalk.bold.cyan(header));
 
@@ -72,6 +78,8 @@ export async function listCommand(options: ListOptions): Promise<void> {
 
     const totalMsg = options.favorites
       ? `\nTotal: ${items.length} favorites`
+      : options.search
+      ? `\nTotal: ${items.length} matching items`
       : `\nTotal: ${items.length} items`;
     console.log(chalk.gray(totalMsg));
   } catch (error) {
