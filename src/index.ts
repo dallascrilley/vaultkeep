@@ -38,6 +38,15 @@ program
   .action(listCommand);
 
 program
+  .command('search <query>')
+  .description('Search items by title in a vault')
+  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .option('-j, --json', 'output as JSON')
+  .action((query, options) =>
+    listCommand({ vault: options.vault, json: options.json, search: query })
+  );
+
+program
   .command('favorites')
   .description('List favorite items in a vault')
   .option('-v, --vault <vault>', 'vault name', 'Private')
