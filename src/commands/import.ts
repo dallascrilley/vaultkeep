@@ -47,7 +47,15 @@ export function createImportCommand(
       deps.checkOpCli();
 
       const vault = options.vault || 'Private';
-      const contents = deps.readFileSync(filePath, 'utf-8');
+      let contents: string;
+
+      try {
+        contents = deps.readFileSync(filePath, 'utf-8');
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to read file.';
+        throw new OpError(`Failed to read "${filePath}": ${message}`, 2);
+      }
       const entries = Object.entries(deps.parseEnv(contents));
 
       if (entries.length === 0) {

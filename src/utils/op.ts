@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -155,8 +155,18 @@ export function createItem(
   const env = getOpEnv();
 
   try {
-    execSync(
-      `op item create --category="password" --title="${title}" --vault="${vault}" "${field}=${value}"`,
+    execFileSync(
+      'op',
+      [
+        'item',
+        'create',
+        '--category=password',
+        '--title',
+        title,
+        '--vault',
+        vault,
+        `${field}=${value}`,
+      ],
       { stdio: 'pipe', env }
     );
   } catch (error: any) {
@@ -176,10 +186,11 @@ export function updateItem(
   const env = getOpEnv();
 
   try {
-    execSync(`op item edit "${title}" --vault="${vault}" "${field}=${value}"`, {
-      stdio: 'pipe',
-      env,
-    });
+    execFileSync(
+      'op',
+      ['item', 'edit', title, '--vault', vault, `${field}=${value}`],
+      { stdio: 'pipe', env }
+    );
   } catch (error: any) {
     throw new OpError(`Failed to update secret: ${error.message}`, 1);
   }
