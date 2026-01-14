@@ -42,8 +42,11 @@ ops get GITHUB_TOKEN
 # Specify vault and field
 ops get GITHUB_TOKEN --vault Personal --field api-key
 
-# Silent mode (for piping)
-export TOKEN=$(ops get GITHUB_TOKEN --silent)
+# Plain output (for piping)
+export TOKEN=$(ops get GITHUB_TOKEN --plain)
+
+# JSON output
+ops get GITHUB_TOKEN --json
 ```
 
 ### Store a secret
@@ -54,6 +57,10 @@ ops set GITHUB_TOKEN
 
 # Pass value directly
 ops set GITHUB_TOKEN --value "ghp_xxxxxxxxxxxx"
+
+# Read value from file or stdin
+ops set GITHUB_TOKEN --value-file ~/.secrets/github_token
+cat token.txt | ops set GITHUB_TOKEN --value -
 
 # Specify vault
 ops set GITHUB_TOKEN --vault Work
@@ -76,6 +83,9 @@ ops search "github"
 
 # JSON output
 ops list --json
+
+# Plain output (tab-delimited)
+ops list --plain
 ```
 
 ### View favorites
@@ -104,6 +114,9 @@ ops export --output .env
 
 # Export as JSON
 ops export --format json --output secrets.json
+
+# JSON to stdout
+ops export --json
 
 # From specific vault
 ops export --vault Work --output work.env
@@ -163,12 +176,12 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `get <name>` | Get a secret | `-v, --vault`, `-f, --field`, `-s, --silent` |
-| `set <name>` | Store a secret | `-v, --vault`, `-f, --field`, `--value` |
-| `list` | List vault items | `-v, --vault`, `-s, --search`, `-j, --json`, `--favorites` |
-| `search <query>` | Search items by title | `-v, --vault`, `-j, --json` |
-| `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
-| `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
+| `get <name>` | Get a secret | `-v, --vault`, `-f, --field`, `--plain`, `--json`, `-s, --silent`, `--no-input` |
+| `set <name>` | Store a secret | `-v, --vault`, `-f, --field`, `--value`, `--value-file`, `--force`, `--no-input` |
+| `list` | List vault items | `-v, --vault`, `-s, --search`, `-j, --json`, `--plain`, `--favorites` |
+| `search <query>` | Search items by title | `-v, --vault`, `-j, --json`, `--plain` |
+| `favorites` | List favorite items | `-v, --vault`, `-j, --json`, `--plain` |
+| `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-j, --json`, `-o, --output` |
 
 ## Development
 
