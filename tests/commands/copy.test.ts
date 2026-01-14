@@ -6,6 +6,7 @@ import type { createSpinner as createSpinnerType } from '../../src/utils/cli.js'
 const clipboardWrites: string[] = [];
 const spinnerMessages: string[] = [];
 let secretValue: string | null = 'super-secret';
+let clipboardValue = '';
 
 function buildCopyCommand() {
   type Spinner = ReturnType<typeof createSpinnerType>;
@@ -13,7 +14,9 @@ function buildCopyCommand() {
   return createCopyCommand({
     getSecret: () => secretValue,
     checkOpCli: () => {},
+    clipboardRead: async () => clipboardValue,
     clipboardWrite: async (value: string) => {
+      clipboardValue = value;
       clipboardWrites.push(value);
     },
     applyColorConfig: () => {},
@@ -36,6 +39,7 @@ afterEach(() => {
   clipboardWrites.length = 0;
   spinnerMessages.length = 0;
   secretValue = 'super-secret';
+  clipboardValue = '';
   mock.timers.reset();
 });
 
@@ -48,6 +52,7 @@ test('copies secret to clipboard and clears after default ttl', async () => {
   assert.deepEqual(clipboardWrites, ['super-secret']);
 
   mock.timers.tick(30000);
+  await new Promise((resolve) => setImmediate(resolve));
 
   assert.deepEqual(clipboardWrites, ['super-secret', '']);
   assert.ok(

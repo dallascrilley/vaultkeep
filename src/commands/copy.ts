@@ -31,6 +31,7 @@ function resolveTtlSeconds(value?: number): number {
 export interface CopyDependencies {
   getSecret: typeof getSecret;
   checkOpCli: typeof checkOpCli;
+  clipboardRead: () => Promise<string>;
   clipboardWrite: (value: string) => Promise<void>;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -42,6 +43,7 @@ export interface CopyDependencies {
 const defaultDependencies: CopyDependencies = {
   getSecret,
   checkOpCli,
+  clipboardRead: () => clipboardy.read(),
   clipboardWrite: (value: string) => clipboardy.write(value),
   applyColorConfig,
   createSpinner,
@@ -93,7 +95,10 @@ export function createCopyCommand(
 
       setTimeout(async () => {
         try {
-          await deps.clipboardWrite('');
+          const current = await deps.clipboardRead();
+          if (current === secret) {
+            await deps.clipboardWrite('');
+          }
         } catch {
           // Best-effort clipboard cleanup.
         }
