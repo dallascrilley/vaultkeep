@@ -144,6 +144,48 @@ export function setSecret(
 }
 
 /**
+ * Create a secret item in 1Password
+ */
+export function createItem(
+  title: string,
+  value: string,
+  vault: string = 'Private',
+  field: string = 'password'
+): void {
+  const env = getOpEnv();
+
+  try {
+    execSync(
+      `op item create --category="password" --title="${title}" --vault="${vault}" "${field}=${value}"`,
+      { stdio: 'pipe', env }
+    );
+  } catch (error: any) {
+    throw new OpError(`Failed to create secret: ${error.message}`, 1);
+  }
+}
+
+/**
+ * Update a secret item in 1Password
+ */
+export function updateItem(
+  title: string,
+  value: string,
+  vault: string = 'Private',
+  field: string = 'password'
+): void {
+  const env = getOpEnv();
+
+  try {
+    execSync(`op item edit "${title}" --vault="${vault}" "${field}=${value}"`, {
+      stdio: 'pipe',
+      env,
+    });
+  } catch (error: any) {
+    throw new OpError(`Failed to update secret: ${error.message}`, 1);
+  }
+}
+
+/**
  * Get item details including all fields
  */
 export function getItem(title: string, vault: string = 'Private'): OpItem | null {
