@@ -4,6 +4,7 @@ import { getCommand } from './commands/get.js';
 import { listCommand } from './commands/list.js';
 import { setCommand } from './commands/set.js';
 import { exportCommand } from './commands/export.js';
+import { copyCommand } from './commands/copy.js';
 
 const program = new Command();
 
@@ -40,6 +41,16 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(setCommand);
+
+program
+  .command('copy <name>')
+  .description('Copy a secret to the clipboard and clear it after a delay')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
+  .option('--ttl <seconds>', 'seconds before clipboard is cleared', (value) => Number(value), 30)
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
+  .action(copyCommand);
 
 program
   .command('list')
