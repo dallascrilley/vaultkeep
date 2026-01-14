@@ -1,14 +1,25 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import ora from 'ora';
 import { getSecret, setSecret, checkOpCli } from '../utils/op.js';
+import {
+  applyColorConfig,
+  createSpinner,
+  isInteractiveInput,
+  resolveBooleanOption,
+  resolveField,
+  resolveVault,
+} from '../utils/cli.js';
 import { OpError } from '../utils/types.js';
 
 export interface GetOptions {
   vault?: string;
   field?: string;
-  store?: boolean;
   silent?: boolean;
+  plain?: boolean;
+  json?: boolean;
+  input?: boolean;
+  quiet?: boolean;
+  color?: boolean;
 }
 
 export async function getCommand(
@@ -18,9 +29,27 @@ export async function getCommand(
   try {
     checkOpCli();
 
-    const vault = options.vault || 'Private';
-    const field = options.field || 'password';
-    const spinner = ora('Fetching secret from 1Password...').start();
+    if (options.json && (options.plain || options.silent)) {
+      throw new OpError('Use either --json or --plain/--silent, not both.', 2);
+    }
+
+    const vault = resolveVault(options.vault);
+    const field = resolveField(options.field);
+    const envQuiet = resolveBooleanOption(undefined, 'OPS_QUIET');
+    const quiet = options.quiet === true || envQuiet;
+    const envNoInput = resolveBooleanOption(undefined, 'OPS_NO_INPUT');
+    const envNoColor = resolveBooleanOption(undefined, 'OPS_NO_COLOR');
+    const outputMode = options.json
+      ? 'json'
+      : options.plain || options.silent
+      ? 'plain'
+      : 'human';
+    const noInput = options.input === false || envNoInput || outputMode !== 'human';
+    const noColor = options.color === false || envNoColor;
+
+    applyColorConfig(noColor);
+
+    const spinner = createSpinner('Fetching secret from 1Password...', quiet);
 
     // Try to get the secret
     const secret = getSecret(name, vault, field);
@@ -28,21 +57,30 @@ export async function getCommand(
     if (secret) {
       spinner.succeed(chalk.green('Secret retrieved!'));
 
-      if (!options.silent) {
-        console.log(chalk.cyan('\nSecret value:'));
-        console.log(chalk.white(secret));
-      } else {
-        // Silent mode: just output the value for piping
-        console.log(secret);
+      if (outputMode === 'json') {
+        console.log(JSON.stringify({ name, vault, field, value: secret }, null, 2));
+        return;
       }
+
+      if (outputMode === 'plain') {
+        console.log(secret);
+        return;
+      }
+
+      if (!quiet) {
+        console.log(chalk.cyan('\nSecret value:'));
+      }
+      console.log(chalk.white(secret));
       return;
     }
 
     // Secret not found - offer to create it
     spinner.fail(chalk.yellow(`Secret "${name}" not found in vault "${vault}"`));
 
-    if (options.silent) {
-      throw new OpError('Secret not found', 1);
+    const canPrompt = !noInput && isInteractiveInput();
+
+    if (!canPrompt) {
+      throw new OpError('Secret not found. Use ops set to create it.', 1);
     }
 
     const answers = await inquirer.prompt([
@@ -72,12 +110,14 @@ export async function getCommand(
     ]);
 
     // Store the secret
-    const storeSpinner = ora('Storing secret in 1Password...').start();
+    const storeSpinner = createSpinner('Storing secret in 1Password...', quiet);
     setSecret(name, valueAnswer.value, vault, field);
     storeSpinner.succeed(chalk.green('Secret stored successfully!'));
 
-    console.log(chalk.cyan('\nYou can retrieve it anytime with:'));
-    console.log(chalk.white(`  ops get ${name}`));
+    if (!quiet) {
+      console.log(chalk.cyan('\nYou can retrieve it anytime with:'));
+      console.log(chalk.white(`  ops get ${name}`));
+    }
   } catch (error) {
     if (error instanceof OpError) {
       console.error(chalk.red(`Error: ${error.message}`));

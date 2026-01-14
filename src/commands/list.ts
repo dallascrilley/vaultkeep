@@ -1,28 +1,47 @@
 import chalk from 'chalk';
-import ora from 'ora';
 import { listItems, searchItems, listFavorites, checkOpCli } from '../utils/op.js';
+import {
+  applyColorConfig,
+  createSpinner,
+  resolveBooleanOption,
+  resolveVault,
+} from '../utils/cli.js';
 import { OpError } from '../utils/types.js';
 
 export interface ListOptions {
   vault?: string;
   search?: string;
   json?: boolean;
+  plain?: boolean;
   favorites?: boolean;
+  quiet?: boolean;
+  color?: boolean;
 }
 
 export async function listCommand(options: ListOptions): Promise<void> {
   try {
     checkOpCli();
 
-    const vault = options.vault || 'Private';
+    if (options.json && options.plain) {
+      throw new OpError('Use either --json or --plain, not both.', 2);
+    }
+
+    const vault = resolveVault(options.vault);
+    const envQuiet = resolveBooleanOption(undefined, 'OPS_QUIET');
+    const quiet = options.quiet === true || envQuiet;
+    const envNoColor = resolveBooleanOption(undefined, 'OPS_NO_COLOR');
+    const noColor = options.color === false || envNoColor;
+
+    applyColorConfig(noColor);
+
     const loadingMsg = options.favorites
       ? `Loading favorites from vault "${vault}"...`
       : options.search
       ? `Searching for "${options.search}" in vault "${vault}"...`
       : `Loading items from vault "${vault}"...`;
-    const spinner = ora(loadingMsg).start();
+    const spinner = createSpinner(loadingMsg, quiet);
 
-    let items = options.favorites
+    const items = options.favorites
       ? listFavorites(vault)
       : options.search
       ? searchItems(options.search, vault)
@@ -31,6 +50,14 @@ export async function listCommand(options: ListOptions): Promise<void> {
     spinner.stop();
 
     if (items.length === 0) {
+      if (options.json) {
+        console.log('[]');
+        return;
+      }
+      if (options.plain) {
+        return;
+      }
+
       const msg = options.favorites
         ? 'No favorites found. Mark items as favorites in 1Password to see them here.'
         : options.search
@@ -42,6 +69,14 @@ export async function listCommand(options: ListOptions): Promise<void> {
 
     if (options.json) {
       console.log(JSON.stringify(items, null, 2));
+      return;
+    }
+
+    if (options.plain) {
+      items.forEach((item) => {
+        const favorite = item.favorite ? 'true' : 'false';
+        console.log(`${item.title}\t${item.category}\t${item.id}\t${favorite}`);
+      });
       return;
     }
 

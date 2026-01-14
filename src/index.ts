@@ -10,55 +10,92 @@ const program = new Command();
 program
   .name('ops')
   .description('Easy secret retrieval from 1Password with smart fallbacks')
-  .version('1.0.0');
+  .version('1.0.0')
+  .addHelpCommand()
+  .showHelpAfterError()
+  .showSuggestionAfterError();
 
 program
   .command('get <name>')
   .description('Get a secret from 1Password (with fallback prompt if not found)')
-  .option('-v, --vault <vault>', 'vault name', 'Private')
-  .option('-f, --field <field>', 'field name', 'password')
-  .option('-s, --silent', 'output only the secret value (for piping)')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
+  .option('-s, --silent', 'output only the secret value (alias for --plain)')
+  .option('--plain', 'output only the secret value')
+  .option('--json', 'output as JSON')
+  .option('--no-input', 'disable prompts (fail if input is required)')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
   .action(getCommand);
 
 program
   .command('set <name>')
   .description('Store a secret in 1Password')
-  .option('-v, --vault <vault>', 'vault name', 'Private')
-  .option('-f, --field <field>', 'field name', 'password')
-  .option('--value <value>', 'secret value (will prompt if not provided)')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
+  .option('--value <value>', 'secret value (use "-" to read from stdin)')
+  .option('--value-file <file>', 'read secret value from file (use "-" for stdin)')
+  .option('--force', 'overwrite without confirmation')
+  .option('--no-input', 'disable prompts (fail if input is required)')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
   .action(setCommand);
 
 program
   .command('list')
   .description('List all items in a vault')
-  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
   .option('-s, --search <query>', 'search for items by title')
   .option('-j, --json', 'output as JSON')
+  .option('--plain', 'output as tab-delimited text')
   .option('--favorites', 'show only favorite items')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
   .action(listCommand);
 
 program
   .command('search <query>')
   .description('Search items by title in a vault')
-  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
   .option('-j, --json', 'output as JSON')
+  .option('--plain', 'output as tab-delimited text')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
   .action((query, options) =>
-    listCommand({ vault: options.vault, json: options.json, search: query })
+    listCommand({
+      vault: options.vault,
+      json: options.json,
+      plain: options.plain,
+      search: query,
+      quiet: options.quiet,
+      color: options.color,
+    })
   );
 
 program
   .command('favorites')
   .description('List favorite items in a vault')
-  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
   .option('-j, --json', 'output as JSON')
-  .action((options) => listCommand({ ...options, favorites: true }));
+  .option('--plain', 'output as tab-delimited text')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
+  .action((options) =>
+    listCommand({
+      ...options,
+      favorites: true,
+    })
+  );
 
 program
   .command('export')
   .description('Export secrets as .env or JSON')
-  .option('-v, --vault <vault>', 'vault name', 'Private')
-  .option('-f, --format <format>', 'output format (env|json)', 'env')
-  .option('-o, --output <file>', 'output file (default: stdout)')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-f, --format <format>', 'output format (env|json)')
+  .option('-j, --json', 'alias for --format json')
+  .option('-o, --output <file>', 'output file (default: stdout, use "-" for stdout)')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
   .action(exportCommand);
 
 // Error handling
