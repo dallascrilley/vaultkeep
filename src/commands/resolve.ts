@@ -107,7 +107,9 @@ export function createResolveCommand(
     try {
       deps.checkOpCli();
 
-      const spinner = deps.createSpinner('Resolving share link...');
+      const spinner = options.json
+        ? null
+        : deps.createSpinner('Resolving share link...');
       const item = deps.resolveShareLink(shareLink);
       const vaultName = normalizeVaultName(item);
       const concealedFields = listConcealedFields(item.fields);
@@ -115,7 +117,9 @@ export function createResolveCommand(
       const primaryField = selectPrimaryField(concealedFields);
       const fieldId = primaryField?.id;
 
-      spinner.succeed(chalk.green('Share link resolved.'));
+      if (spinner) {
+        spinner.succeed(chalk.green('Share link resolved.'));
+      }
 
       const opReference = fieldId
         ? `op://${vaultName}/${item.title}/${fieldId}`
