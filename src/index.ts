@@ -6,6 +6,7 @@ import { setCommand } from './commands/set.js';
 import { exportCommand } from './commands/export.js';
 import { importCommand } from './commands/import.js';
 import { resolveCommand } from './commands/resolve.js';
+import { runCommand } from './commands/run.js';
 
 const program = new Command();
 
@@ -13,6 +14,8 @@ program
   .name('ops')
   .description('Easy secret retrieval from 1Password with smart fallbacks')
   .version('1.0.0');
+
+program.enablePositionalOptions();
 
 program
   .command('get <name>')
@@ -29,6 +32,23 @@ program
   .option('-f, --field <field>', 'field name', 'password')
   .option('--value <value>', 'secret value (will prompt if not provided)')
   .action(setCommand);
+
+program
+  .command('run')
+  .description('Run a command with secrets injected into the environment')
+  .argument('<command...>', 'command to run')
+  .passThroughOptions()
+  .allowUnknownOption(true)
+  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .option('-f, --field <field>', 'field name', 'password')
+  .option(
+    '-e, --env <pair>',
+    'map env var to secret name (repeatable, e.g. --env API_KEY=MY_SECRET)',
+    (value, previous: string[] = []) => [...previous, value],
+    []
+  )
+  .option('--env-file <file>', 'env mapping file (default: .env.ops)')
+  .action(runCommand);
 
 program
   .command('list')

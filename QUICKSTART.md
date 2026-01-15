@@ -66,10 +66,8 @@ ops resolve "https://share.1password.com/s#..."
 # Clone repo
 git clone https://github.com/user/project.git
 cd project
-
 # Generate .env from 1Password
 ops export --output .env
-
 # Start development
 npm install
 npm run dev
@@ -82,6 +80,17 @@ ops import .env
 
 # Import into a specific vault
 ops import .env --vault Work
+```
+
+### Run a command with secrets injected
+```bash
+# Create a mapping file
+cat <<EOF > .env.ops
+API_KEY=MY_API_KEY_SECRET
+EOF
+
+# Run a command with the injected env
+ops run -- node app.js
 ```
 
 ### Store multiple secrets
