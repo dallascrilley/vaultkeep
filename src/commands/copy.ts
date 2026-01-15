@@ -78,7 +78,7 @@ export function createCopyCommand(
 
       const secret = deps.getSecret(name, vault, field);
 
-      if (!secret) {
+      if (secret === null) {
         spinner.fail(
           chalk.yellow(`Secret "${name}" not found in vault "${vault}"`)
         );
