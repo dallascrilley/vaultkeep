@@ -1,6 +1,7 @@
 import { test, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createVaultsCommand } from '../../src/commands/vaults.js';
+import { OpError } from '../../src/utils/types.js';
 
 const consoleOutput: string[] = [];
 
@@ -62,4 +63,34 @@ test('vaults handles empty vault list', async () => {
   await vaultsCommand({});
 
   assert.ok(consoleOutput.some((line) => line.includes('No vaults found')));
+});
+
+test('vaults fails when listVaults throws', async () => {
+  const exitCalls: number[] = [];
+  const exitMock = mock.method(process, 'exit', (code?: number) => {
+    exitCalls.push(code ?? 0);
+    throw new Error('process.exit');
+  });
+  const errorMock = mock.method(console, 'error', () => {});
+
+  const vaultsCommand = createVaultsCommand({
+    listVaults: () => {
+      throw new OpError('Failed to list vaults: Connection failed', 1);
+    },
+    checkOpCli: () => {},
+    applyColorConfig: () => {},
+    createSpinner: () => ({
+      succeed: () => {},
+      fail: () => {},
+      stop: () => {},
+    }) as any,
+    resolveBooleanOption: () => false,
+    log: (msg: string) => consoleOutput.push(msg),
+  });
+
+  await assert.rejects(() => vaultsCommand({}), /process\.exit/);
+  assert.equal(exitCalls[0], 1, 'Should exit with code 1 for vault list error');
+
+  exitMock.mock.restore();
+  errorMock.mock.restore();
 });
