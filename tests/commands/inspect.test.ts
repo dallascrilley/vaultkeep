@@ -104,3 +104,37 @@ test('inspect fails when item not found', async () => {
   exitMock.mock.restore();
   errorMock.mock.restore();
 });
+
+test('inspect fails when name is empty', async () => {
+  const inspectCommand = buildInspectCommand(null);
+
+  const exitCalls: number[] = [];
+  const exitMock = mock.method(process, 'exit', (code?: number) => {
+    exitCalls.push(code ?? 0);
+    throw new Error('process.exit');
+  });
+  const errorMock = mock.method(console, 'error', () => {});
+
+  await assert.rejects(() => inspectCommand('', {}), /process\.exit/);
+  assert.equal(exitCalls[0], 2, 'Should exit with code 2 for validation error');
+
+  exitMock.mock.restore();
+  errorMock.mock.restore();
+});
+
+test('inspect fails when name is whitespace only', async () => {
+  const inspectCommand = buildInspectCommand(null);
+
+  const exitCalls: number[] = [];
+  const exitMock = mock.method(process, 'exit', (code?: number) => {
+    exitCalls.push(code ?? 0);
+    throw new Error('process.exit');
+  });
+  const errorMock = mock.method(console, 'error', () => {});
+
+  await assert.rejects(() => inspectCommand('   ', {}), /process\.exit/);
+  assert.equal(exitCalls[0], 2, 'Should exit with code 2 for validation error');
+
+  exitMock.mock.restore();
+  errorMock.mock.restore();
+});

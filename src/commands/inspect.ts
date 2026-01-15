@@ -45,6 +45,11 @@ export function createInspectCommand(
     options: InspectOptions
   ): Promise<void> {
     try {
+      // Validate name is not empty
+      if (!name || name.trim().length === 0) {
+        throw new OpError('Item name cannot be empty.', 2);
+      }
+
       deps.checkOpCli();
 
       const vault = deps.resolveVault(options.vault);
@@ -64,7 +69,7 @@ export function createInspectCommand(
         throw new OpError(`Item not found. Use ops list to see available items.`, 1);
       }
 
-      spinner.stop();
+      spinner.succeed(chalk.green(`Found item "${name}"`));
 
       if (options.json) {
         deps.log(JSON.stringify({
