@@ -77,6 +77,7 @@ program
     []
   )
   .option('--env-file <file>', 'env mapping file (default: .env.ops)')
+  .option('--verbose', 'show which secrets are being injected')
   .option('--no-color', 'disable color output')
   .action(runCommand);
 

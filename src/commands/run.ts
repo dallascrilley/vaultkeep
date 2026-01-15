@@ -17,6 +17,7 @@ export interface RunOptions {
   env?: string[];
   envFile?: string;
   color?: boolean;
+  verbose?: boolean;
 }
 
 export interface ProcessLike {
@@ -145,6 +146,14 @@ export function createRunCommand(
           return [key, secret] as const;
         })
       );
+
+      if (options.verbose) {
+        console.log(chalk.cyan('[ops] Injecting environment variables:'));
+        for (const [key] of resolvedEntries) {
+          console.log(chalk.gray(`  ${key} <- (secret value hidden)`));
+        }
+        console.log(chalk.cyan(`[ops] Running: ${command.join(' ')}`));
+      }
 
       const injectedEnv = Object.fromEntries(resolvedEntries);
       const child = deps.spawn(command[0], command.slice(1), {

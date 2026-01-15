@@ -109,3 +109,51 @@ test('exits with OpError when env file parsing fails', async () => {
   exitMock.mock.restore();
   errorMock.mock.restore();
 });
+
+test('--verbose flag logs injected variable names without exposing values', async () => {
+  const child = new FakeChildProcess();
+  const spawnCalls: Array<{ cmd: string; args: string[]; options: any }> = [];
+  const processMock = createProcessMock({ PATH: '/bin' });
+  const logOutput: string[] = [];
+  const logMock = mock.method(console, 'log', (msg: string) => {
+    logOutput.push(msg);
+  });
+
+  const runCommand = createRunCommand({
+    checkOpCli: () => {},
+    getSecret: (reference: string) => {
+      if (reference === 'SECRET_A') return 'actual-secret-value-a';
+      if (reference === 'SECRET_B') return 'actual-secret-value-b';
+      return null;
+    },
+    readFileSync: ((path: string, encoding: BufferEncoding) =>
+      'API_KEY=SECRET_A\nDB_PASS=SECRET_B') as typeof readFileSyncType,
+    existsSync: () => true,
+    parseEnv: () => ({ API_KEY: 'SECRET_A', DB_PASS: 'SECRET_B' }),
+    spawn: ((cmd: string, args: string[], options: any) => {
+      spawnCalls.push({ cmd, args, options });
+      setImmediate(() => child.emit('exit', 0, null));
+      return child as any;
+    }) as unknown as typeof spawnType,
+    process: processMock,
+  });
+
+  await runCommand(['node', 'app.js'], { verbose: true });
+
+  logMock.mock.restore();
+
+  // Verify verbose output shows variable names
+  const combinedLog = logOutput.join('\n');
+  assert.ok(combinedLog.includes('API_KEY'), 'Should log API_KEY variable name');
+  assert.ok(combinedLog.includes('DB_PASS'), 'Should log DB_PASS variable name');
+  assert.ok(combinedLog.includes('node app.js'), 'Should log the command being run');
+
+  // Verify secret values are NOT exposed in verbose output
+  assert.ok(!combinedLog.includes('actual-secret-value-a'), 'Should NOT expose secret value a');
+  assert.ok(!combinedLog.includes('actual-secret-value-b'), 'Should NOT expose secret value b');
+
+  // Verify command still executed correctly
+  assert.equal(spawnCalls.length, 1);
+  assert.equal(spawnCalls[0].options.env.API_KEY, 'actual-secret-value-a');
+  assert.equal(spawnCalls[0].options.env.DB_PASS, 'actual-secret-value-b');
+});
