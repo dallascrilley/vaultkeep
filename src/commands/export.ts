@@ -1,22 +1,43 @@
 import { writeFileSync } from 'fs';
 import chalk from 'chalk';
-import ora from 'ora';
 import { listItems, getItem, checkOpCli } from '../utils/op.js';
+import {
+  applyColorConfig,
+  createSpinner,
+  resolveBooleanOption,
+  resolveFormat,
+  resolveVault,
+} from '../utils/cli.js';
 import { OpError, ExportOptions } from '../utils/types.js';
 
 export async function exportCommand(options: ExportOptions): Promise<void> {
   try {
     checkOpCli();
 
-    const vault = options.vault || 'Private';
-    const format = options.format || 'env';
-    const spinner = ora(`Exporting secrets from vault "${vault}"...`).start();
+    if (options.json && options.format && options.format !== 'json') {
+      throw new OpError('Use either --json or --format, not both.', 2);
+    }
+
+    const vault = resolveVault(options.vault);
+    const envQuiet = resolveBooleanOption(undefined, 'OPS_QUIET');
+    const quiet = options.quiet === true || envQuiet;
+    const envNoColor = resolveBooleanOption(undefined, 'OPS_NO_COLOR');
+    const noColor = options.color === false || envNoColor;
+    const format = resolveFormat(options.json ? 'json' : options.format);
+
+    applyColorConfig(noColor);
+
+    const outputToStdout = !options.output || options.output === '-';
+    const quietSpinner = quiet || outputToStdout || format === 'json';
+    const spinner = createSpinner(`Exporting secrets from vault "${vault}"...`, quietSpinner);
 
     // Get all items from vault
     const items = listItems(vault);
 
     if (items.length === 0) {
-      spinner.warn(chalk.yellow('No items found in vault.'));
+      if (!quietSpinner) {
+        spinner.warn(chalk.yellow('No items found in vault.'));
+      }
       return;
     }
 
@@ -43,7 +64,9 @@ export async function exportCommand(options: ExportOptions): Promise<void> {
       }
     }
 
-    spinner.stop();
+    if (!quietSpinner) {
+      spinner.stop();
+    }
 
     // Format output
     let output: string;
@@ -65,18 +88,24 @@ export async function exportCommand(options: ExportOptions): Promise<void> {
     }
 
     // Output to file or stdout
-    if (options.output) {
-      writeFileSync(options.output, output);
-      console.log(
-        chalk.green(`✓ Exported ${Object.keys(secrets).length} secrets to ${options.output}`)
-      );
+    if (!outputToStdout) {
+      writeFileSync(options.output!, output);
+      if (!quiet) {
+        console.log(
+          chalk.green(
+            `✓ Exported ${Object.keys(secrets).length} secrets to ${options.output}`
+          )
+        );
+      }
     } else {
       console.log(output);
     }
 
-    console.log(
-      chalk.gray(`\n${Object.keys(secrets).length} secrets exported from "${vault}"`)
-    );
+    if (!quiet && !outputToStdout) {
+      console.log(
+        chalk.gray(`\n${Object.keys(secrets).length} secrets exported from "${vault}"`)
+      );
+    }
   } catch (error) {
     if (error instanceof OpError) {
       console.error(chalk.red(`Error: ${error.message}`));
