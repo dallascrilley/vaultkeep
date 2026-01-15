@@ -1,4 +1,5 @@
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync } from 'fs';
+import { dirname } from 'path';
 import chalk from 'chalk';
 import { listItems, getItem, checkOpCli } from '../utils/op.js';
 import {
@@ -8,109 +9,143 @@ import {
   resolveFormat,
   resolveVault,
 } from '../utils/cli.js';
-import { OpError, ExportOptions } from '../utils/types.js';
+import { OpError, ExportOptions, OpItem } from '../utils/types.js';
+import type oraType from 'ora';
 
-export async function exportCommand(options: ExportOptions): Promise<void> {
-  try {
-    checkOpCli();
+export interface ExportDeps {
+  checkOpCli: () => void;
+  listItems: (vault: string) => OpItem[];
+  getItem: (title: string, vault: string) => OpItem | null;
+  existsSync: (path: string) => boolean;
+  dirname: (path: string) => string;
+  writeFileSync: (path: string, content: string) => void;
+  createSpinner: (text: string, quiet: boolean) => ReturnType<typeof oraType>;
+}
 
-    if (options.json && options.format && options.format !== 'json') {
-      throw new OpError('Use either --json or --format, not both.', 2);
-    }
+const defaultDeps: ExportDeps = {
+  checkOpCli,
+  listItems,
+  getItem,
+  existsSync,
+  dirname,
+  writeFileSync,
+  createSpinner,
+};
 
-    const vault = resolveVault(options.vault);
-    const envQuiet = resolveBooleanOption(undefined, 'OPS_QUIET');
-    const quiet = options.quiet === true || envQuiet;
-    const envNoColor = resolveBooleanOption(undefined, 'OPS_NO_COLOR');
-    const noColor = options.color === false || envNoColor;
-    const format = resolveFormat(options.json ? 'json' : options.format);
+export function createExportCommand(deps: ExportDeps = defaultDeps) {
+  return async function exportCommand(options: ExportOptions): Promise<void> {
+    try {
+      deps.checkOpCli();
 
-    applyColorConfig(noColor);
+      if (options.json && options.format && options.format !== 'json') {
+        throw new OpError('Use either --json or --format, not both.', 2);
+      }
 
-    const outputToStdout = !options.output || options.output === '-';
-    const quietSpinner = quiet || outputToStdout || format === 'json';
-    const spinner = createSpinner(`Exporting secrets from vault "${vault}"...`, quietSpinner);
+      const vault = resolveVault(options.vault);
+      const envQuiet = resolveBooleanOption(undefined, 'OPS_QUIET');
+      const quiet = options.quiet === true || envQuiet;
+      const envNoColor = resolveBooleanOption(undefined, 'OPS_NO_COLOR');
+      const noColor = options.color === false || envNoColor;
+      const format = resolveFormat(options.json ? 'json' : options.format);
 
-    // Get all items from vault
-    const items = listItems(vault);
+      applyColorConfig(noColor);
 
-    if (items.length === 0) {
+      // Validate output path early (before fetching secrets)
+      if (options.output && options.output !== '-') {
+        const dir = deps.dirname(options.output);
+        if (!deps.existsSync(dir)) {
+          throw new OpError(`Output directory not found: ${dir}`, 2);
+        }
+      }
+
+      const outputToStdout = !options.output || options.output === '-';
+      const quietSpinner = quiet || outputToStdout || format === 'json';
+      const spinner = deps.createSpinner(`Exporting secrets from vault "${vault}"...`, quietSpinner);
+
+      // Get all items from vault
+      const items = deps.listItems(vault);
+
+      if (items.length === 0) {
+        if (!quietSpinner) {
+          spinner.warn(chalk.yellow('No items found in vault.'));
+        }
+        return;
+      }
+
+      // Fetch full details for each item
+      const secrets: Record<string, string> = {};
+
+      for (const item of items) {
+        const fullItem = deps.getItem(item.title, vault);
+        if (!fullItem?.fields) continue;
+
+        // Find password or concealed field
+        const secretField = fullItem.fields.find(
+          (f) => f.type === 'CONCEALED' || f.id === 'password'
+        );
+
+        if (secretField?.value) {
+          // Convert title to env var format (uppercase, replace spaces/hyphens with underscore)
+          const envKey = item.title
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '_')
+            .replace(/_+/g, '_');
+
+          secrets[envKey] = secretField.value;
+        }
+      }
+
       if (!quietSpinner) {
-        spinner.warn(chalk.yellow('No items found in vault.'));
+        spinner.stop();
       }
-      return;
-    }
 
-    // Fetch full details for each item
-    const secrets: Record<string, string> = {};
+      // Format output
+      let output: string;
 
-    for (const item of items) {
-      const fullItem = getItem(item.title, vault);
-      if (!fullItem?.fields) continue;
-
-      // Find password or concealed field
-      const secretField = fullItem.fields.find(
-        (f) => f.type === 'CONCEALED' || f.id === 'password'
-      );
-
-      if (secretField?.value) {
-        // Convert title to env var format (uppercase, replace spaces/hyphens with underscore)
-        const envKey = item.title
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, '_')
-          .replace(/_+/g, '_');
-
-        secrets[envKey] = secretField.value;
+      if (format === 'json') {
+        output = JSON.stringify(secrets, null, 2);
+      } else {
+        // .env format
+        output = Object.entries(secrets)
+          .map(([key, value]) => {
+            // Escape quotes and newlines
+            const escapedValue = value
+              .replace(/\\/g, '\\\\')
+              .replace(/"/g, '\\"')
+              .replace(/\n/g, '\\n');
+            return `${key}="${escapedValue}"`;
+          })
+          .join('\n');
       }
-    }
 
-    if (!quietSpinner) {
-      spinner.stop();
-    }
+      // Output to file or stdout
+      if (!outputToStdout) {
+        deps.writeFileSync(options.output!, output);
+        if (!quiet) {
+          console.log(
+            chalk.green(
+              `✓ Exported ${Object.keys(secrets).length} secrets to ${options.output}`
+            )
+          );
+        }
+      } else {
+        console.log(output);
+      }
 
-    // Format output
-    let output: string;
-
-    if (format === 'json') {
-      output = JSON.stringify(secrets, null, 2);
-    } else {
-      // .env format
-      output = Object.entries(secrets)
-        .map(([key, value]) => {
-          // Escape quotes and newlines
-          const escapedValue = value
-            .replace(/\\/g, '\\\\')
-            .replace(/"/g, '\\"')
-            .replace(/\n/g, '\\n');
-          return `${key}="${escapedValue}"`;
-        })
-        .join('\n');
-    }
-
-    // Output to file or stdout
-    if (!outputToStdout) {
-      writeFileSync(options.output!, output);
-      if (!quiet) {
+      if (!quiet && !outputToStdout) {
         console.log(
-          chalk.green(
-            `✓ Exported ${Object.keys(secrets).length} secrets to ${options.output}`
-          )
+          chalk.gray(`\n${Object.keys(secrets).length} secrets exported from "${vault}"`)
         );
       }
-    } else {
-      console.log(output);
+    } catch (error) {
+      if (error instanceof OpError) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(error.exitCode);
+      }
+      throw error;
     }
-
-    if (!quiet && !outputToStdout) {
-      console.log(
-        chalk.gray(`\n${Object.keys(secrets).length} secrets exported from "${vault}"`)
-      );
-    }
-  } catch (error) {
-    if (error instanceof OpError) {
-      console.error(chalk.red(`Error: ${error.message}`));
-      process.exit(error.exitCode);
-    }
-    throw error;
-  }
+  };
 }
+
+// Default export for CLI usage
+export const exportCommand = createExportCommand();
