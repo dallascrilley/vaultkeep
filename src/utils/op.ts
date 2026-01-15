@@ -31,6 +31,141 @@ function getOpEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+function formatOpErrorMessage(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return '';
+  }
+
+  const maybeError = error as { stderr?: Buffer | string; message?: string };
+  const stderr = maybeError.stderr ? String(maybeError.stderr).trim() : '';
+  if (stderr.length > 0) {
+    return stderr.split('\n')[0];
+  }
+
+  if (maybeError.message) {
+    return String(maybeError.message).trim();
+  }
+
+  return '';
+}
+
+function getOpEnvWithoutServiceAccount(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env.OP_SERVICE_ACCOUNT_TOKEN;
+  return env;
+}
+
+function isShareLinkUnsupported(message: string): boolean {
+  return message.includes('--share-link') && message.includes('unknown');
+}
+
+function isServiceAccountRestriction(message: string): boolean {
+  return (
+    message.toLowerCase().includes('service account') ||
+    message.toLowerCase().includes('vault query must be provided')
+  );
+}
+
+interface ShareLinkResolverDeps {
+  execFileSync: typeof execFileSync;
+  getServiceAccountEnv: () => NodeJS.ProcessEnv;
+  getUserEnv: () => NodeJS.ProcessEnv;
+}
+
+function runShareLinkAttempts(
+  shareLink: string,
+  env: NodeJS.ProcessEnv,
+  execFn: typeof execFileSync
+): { item?: OpItem; lastError?: string; shareLinkUnsupported?: boolean; serviceAccountRestricted?: boolean } {
+  let lastError = '';
+  let shareLinkUnsupported = false;
+  let serviceAccountRestricted = false;
+
+  const attempts: string[][] = [
+    ['item', 'get', '--share-link', shareLink, '--format=json'],
+    ['item', 'get', shareLink, '--format=json'],
+  ];
+
+  for (const args of attempts) {
+    try {
+      const output = execFn('op', args, {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        env,
+      });
+      return { item: JSON.parse(output) as OpItem };
+    } catch (error: unknown) {
+      const message = formatOpErrorMessage(error);
+      if (message) {
+        lastError = message;
+      }
+      if (isShareLinkUnsupported(message)) {
+        shareLinkUnsupported = true;
+      }
+      if (isServiceAccountRestriction(message)) {
+        serviceAccountRestricted = true;
+      }
+    }
+  }
+
+  return { lastError, shareLinkUnsupported, serviceAccountRestricted };
+}
+
+export function createShareLinkResolver(
+  overrides: Partial<ShareLinkResolverDeps> = {}
+): (shareLink: string) => OpItem {
+  const deps: ShareLinkResolverDeps = {
+    execFileSync,
+    getServiceAccountEnv: getOpEnv,
+    getUserEnv: getOpEnvWithoutServiceAccount,
+    ...overrides,
+  };
+
+  return (shareLink: string): OpItem => {
+    const primary = runShareLinkAttempts(
+      shareLink,
+      deps.getServiceAccountEnv(),
+      deps.execFileSync
+    );
+
+    if (primary.item) {
+      return primary.item;
+    }
+
+    if (primary.shareLinkUnsupported) {
+      throw new OpError(
+        'Share links are not supported by this op CLI version. Update op and try again.',
+        1
+      );
+    }
+
+    if (primary.serviceAccountRestricted) {
+      const fallback = runShareLinkAttempts(
+        shareLink,
+        deps.getUserEnv(),
+        deps.execFileSync
+      );
+
+      if (fallback.item) {
+        return fallback.item;
+      }
+
+      if (fallback.shareLinkUnsupported) {
+        throw new OpError(
+          'Share links are not supported by this op CLI version. Update op and try again.',
+          1
+        );
+      }
+
+      const suffix = fallback.lastError ? `: ${fallback.lastError}` : '';
+      throw new OpError(`Failed to resolve share link${suffix}`, 1);
+    }
+
+    const suffix = primary.lastError ? `: ${primary.lastError}` : '';
+    throw new OpError(`Failed to resolve share link${suffix}`, 1);
+  };
+}
+
 /**
  * Check if op CLI is installed and user is signed in
  */
@@ -211,6 +346,15 @@ export function getItem(title: string, vault: string = 'Private'): OpItem | null
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolve a 1Password share link into an item payload.
+ */
+const resolveShareLink = createShareLinkResolver();
+
+export function getItemFromShareLink(shareLink: string): OpItem {
+  return resolveShareLink(shareLink);
 }
 
 /**
