@@ -3,6 +3,12 @@ import chalk from 'chalk';
 import spawn from 'cross-spawn';
 import dotenv from 'dotenv';
 import { checkOpCli, getSecret } from '../utils/op.js';
+import {
+  applyColorConfig,
+  resolveBooleanOption,
+  resolveField,
+  resolveVault,
+} from '../utils/cli.js';
 import { OpError } from '../utils/types.js';
 
 export interface RunOptions {
@@ -10,6 +16,7 @@ export interface RunOptions {
   field?: string;
   env?: string[];
   envFile?: string;
+  color?: boolean;
 }
 
 export interface ProcessLike {
@@ -99,14 +106,18 @@ export function createRunCommand(
     options: RunOptions
   ): Promise<void> {
     try {
+      const envNoColor = resolveBooleanOption(undefined, 'OPS_NO_COLOR');
+      const noColor = options.color === false || envNoColor;
+      applyColorConfig(noColor);
+
       deps.checkOpCli();
 
       if (!command || command.length === 0) {
         throw new OpError('Command required. Usage: ops run -- <command>', 2);
       }
 
-      const vault = options.vault || 'Private';
-      const field = options.field || 'password';
+      const vault = resolveVault(options.vault);
+      const field = resolveField(options.field);
 
       const envFile = options.envFile || DEFAULT_ENV_FILE;
       const fileMapping = loadEnvFile(envFile, deps);

@@ -1,13 +1,20 @@
 import { readFileSync } from 'fs';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import ora from 'ora';
 import dotenv from 'dotenv';
 import { checkOpCli, getItem, createItem, updateItem } from '../utils/op.js';
+import {
+  applyColorConfig,
+  createSpinner,
+  resolveBooleanOption,
+  resolveVault,
+} from '../utils/cli.js';
 import { OpError } from '../utils/types.js';
 
 export interface ImportOptions {
   vault?: string;
+  quiet?: boolean;
+  color?: boolean;
 }
 
 export interface ImportDependencies {
@@ -19,7 +26,10 @@ export interface ImportDependencies {
   updateItem: typeof updateItem;
   prompt: typeof inquirer.prompt;
   isInteractive: () => boolean;
-  createSpinner: (text: string) => ReturnType<typeof ora>;
+  createSpinner: typeof createSpinner;
+  applyColorConfig: typeof applyColorConfig;
+  resolveBooleanOption: typeof resolveBooleanOption;
+  resolveVault: typeof resolveVault;
 }
 
 const defaultDependencies: ImportDependencies = {
@@ -31,7 +41,10 @@ const defaultDependencies: ImportDependencies = {
   updateItem,
   prompt: inquirer.prompt,
   isInteractive: () => Boolean(process.stdin.isTTY),
-  createSpinner: (text: string) => ora(text).start(),
+  createSpinner,
+  applyColorConfig,
+  resolveBooleanOption,
+  resolveVault,
 };
 
 export function createImportCommand(
@@ -44,9 +57,15 @@ export function createImportCommand(
     options: ImportOptions
   ): Promise<void> {
     try {
+      const envQuiet = deps.resolveBooleanOption(undefined, 'OPS_QUIET');
+      const quiet = options.quiet === true || envQuiet;
+      const envNoColor = deps.resolveBooleanOption(undefined, 'OPS_NO_COLOR');
+      const noColor = options.color === false || envNoColor;
+      deps.applyColorConfig(noColor);
+
       deps.checkOpCli();
 
-      const vault = options.vault || 'Private';
+      const vault = deps.resolveVault(options.vault);
       let contents: string;
 
       try {
@@ -67,12 +86,15 @@ export function createImportCommand(
       const entries = Object.entries(parsed);
 
       if (entries.length === 0) {
-        console.log(chalk.yellow('No entries found to import.'));
+        if (!quiet) {
+          console.log(chalk.yellow('No entries found to import.'));
+        }
         return;
       }
 
       const spinner = deps.createSpinner(
-        `Importing ${entries.length} secrets into "${vault}"...`
+        `Importing ${entries.length} secrets into "${vault}"...`,
+        quiet
       );
 
       const imported: string[] = [];
@@ -119,21 +141,23 @@ export function createImportCommand(
         imported.push(key);
       }
 
-      spinner.succeed(
-        chalk.green(
-          `Imported ${imported.length}, updated ${updated.length}, skipped ${skipped.length}.`
-        )
-      );
+      if (!quiet) {
+        spinner.succeed(
+          chalk.green(
+            `Imported ${imported.length}, updated ${updated.length}, skipped ${skipped.length}.`
+          )
+        );
 
-      console.log(chalk.cyan('\nImport report:'));
-      if (imported.length) {
-        console.log(chalk.green(`  Imported: ${imported.join(', ')}`));
-      }
-      if (updated.length) {
-        console.log(chalk.yellow(`  Updated: ${updated.join(', ')}`));
-      }
-      if (skipped.length) {
-        console.log(chalk.gray(`  Skipped: ${skipped.join(', ')}`));
+        console.log(chalk.cyan('\nImport report:'));
+        if (imported.length) {
+          console.log(chalk.green(`  Imported: ${imported.join(', ')}`));
+        }
+        if (updated.length) {
+          console.log(chalk.yellow(`  Updated: ${updated.join(', ')}`));
+        }
+        if (skipped.length) {
+          console.log(chalk.gray(`  Skipped: ${skipped.join(', ')}`));
+        }
       }
     } catch (error) {
       if (error instanceof OpError) {
