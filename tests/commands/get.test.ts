@@ -14,6 +14,7 @@ function buildGetCommand() {
     checkOpCli: () => {},
     itemExists: () => itemExists,
     getItemFields: () => itemFields,
+    findSimilarItems: () => [],
     prompt: async () => ({ create: false }),
     applyColorConfig: () => {},
     createSpinner: () => ({
