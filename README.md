@@ -9,6 +9,9 @@ Easy secret retrieval from 1Password with smart fallbacks and interactive prompt
 - 📋 **List & search** - Browse your vault items
 - ⭐ **Favorites** - Quick access to your most-used secrets
 - 📤 **Export** - Generate .env files from your vault
+- 🔍 **Inspect** - Discover available fields for any secret
+- 🏦 **Vaults** - List and browse available vaults
+- 💡 **Smart suggestions** - Get hints when secrets or fields aren't found
 - 🎨 **Beautiful UI** - Colored output and progress indicators
 - 🔒 **Secure** - Never exposes secrets in logs or chat
 
@@ -140,6 +143,9 @@ ops import .env
 
 # Import into a specific vault
 ops import .env --vault Work
+
+# Preview what would be imported without making changes
+ops import .env --dry-run
 ```
 
 ### Run a command with injected secrets
@@ -158,6 +164,9 @@ ops run -- node app.js
 
 # Or inline mappings
 ops run --env API_KEY=MY_API_KEY_SECRET -- node app.js
+
+# Verbose mode shows which secrets are injected
+ops run --verbose --env API_KEY=MY_API_KEY_SECRET -- node app.js
 ```
 
 ### Resolve a share link
@@ -171,6 +180,47 @@ ops resolve "https://share.1password.com/s#..." --json
 ```
 
 Outputs all available fields (id/label/type) so you can pick the right `--field`.
+
+### Inspect a secret
+
+```bash
+# List available fields for a secret
+ops inspect "GitHub PAT"
+
+# JSON output
+ops inspect "GitHub PAT" --json
+```
+
+Useful for discovering field names before using `ops get --field`.
+
+### List vaults
+
+```bash
+# List all available vaults
+ops vaults
+
+# JSON output
+ops vaults --json
+```
+
+### Smart suggestions
+
+When a secret or field isn't found, ops provides helpful suggestions:
+
+```bash
+# If field doesn't exist, suggests available fields
+$ ops get "GitHub PAT" --field token
+Error: Field "token" not found
+Available fields: password, username, otp
+Try: ops get "GitHub PAT" --field password
+
+# If secret doesn't exist, suggests similar names
+$ ops get "GutHub PAT"
+Error: Secret "GutHub PAT" not found
+Did you mean: GitHub PAT, GitLab PAT
+```
+
+The clipboard `copy` command also confirms when it clears the clipboard after the TTL expires.
 
 ## Integration with AGENTS.md Pattern
 
@@ -233,9 +283,11 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `search <query>` | Search items by title | `-v, --vault`, `-j, --json`, `--plain` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json`, `--plain` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-j, --json`, `-o, --output` |
-| `import <file>` | Import secrets from .env | `-v, --vault` |
-| `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file` |
+| `import <file>` | Import secrets from .env | `-v, --vault`, `--dry-run` |
+| `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file`, `--verbose` |
 | `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
+| `inspect <name>` | Show available fields for a secret | `-v, --vault`, `-j, --json` |
+| `vaults` | List available vaults | `-j, --json` |
 
 ## Development
 
