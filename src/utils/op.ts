@@ -357,7 +357,7 @@ export function updateItem(
  */
 export function getItem(title: string, vault: string = 'Private'): OpItem | null {
   const env = getOpEnv();
-  
+
   try {
     const output = execSync(
       `op item get "${title}" --vault="${vault}" --format=json`,
@@ -367,6 +367,18 @@ export function getItem(title: string, vault: string = 'Private'): OpItem | null
   } catch {
     return null;
   }
+}
+
+/**
+ * Get available field labels for an item
+ */
+export function getItemFields(title: string, vault: string = 'Private'): string[] {
+  const item = getItem(title, vault);
+  if (!item?.fields) return [];
+
+  return item.fields
+    .filter((f) => f.label && f.label.length > 0)
+    .map((f) => f.label);
 }
 
 /**
