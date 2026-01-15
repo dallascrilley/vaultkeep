@@ -15,6 +15,7 @@ export interface ImportOptions {
   vault?: string;
   quiet?: boolean;
   color?: boolean;
+  dryRun?: boolean;
 }
 
 export interface ImportDependencies {
@@ -92,8 +93,9 @@ export function createImportCommand(
         return;
       }
 
+      const dryRunPrefix = options.dryRun ? '[DRY RUN] ' : '';
       const spinner = deps.createSpinner(
-        `Importing ${entries.length} secrets into "${vault}"...`,
+        `${dryRunPrefix}Importing ${entries.length} secrets into "${vault}"...`,
         quiet
       );
 
@@ -104,11 +106,17 @@ export function createImportCommand(
       const canPrompt = deps.isInteractive();
 
       for (const [key, value] of entries) {
-        spinner.text = `Importing ${key}...`;
+        spinner.text = `${dryRunPrefix}Importing ${key}...`;
 
         const existing = deps.getItem(key, vault);
 
         if (existing) {
+          if (options.dryRun) {
+            // In dry-run mode, assume update would happen (no prompt)
+            updated.push(key);
+            continue;
+          }
+
           if (!canPrompt) {
             skipped.push(key);
             continue;
@@ -137,23 +145,30 @@ export function createImportCommand(
           continue;
         }
 
-        deps.createItem(key, value, vault, 'password');
+        if (!options.dryRun) {
+          deps.createItem(key, value, vault, 'password');
+        }
         imported.push(key);
       }
 
       if (!quiet) {
+        const wouldVerb = options.dryRun ? 'Would import' : 'Imported';
+        const wouldUpdate = options.dryRun ? 'would update' : 'updated';
         spinner.succeed(
           chalk.green(
-            `Imported ${imported.length}, updated ${updated.length}, skipped ${skipped.length}.`
+            `${dryRunPrefix}${wouldVerb} ${imported.length}, ${wouldUpdate} ${updated.length}, skipped ${skipped.length}.`
           )
         );
 
-        console.log(chalk.cyan('\nImport report:'));
+        const reportTitle = options.dryRun ? '\n[DRY RUN] Import preview:' : '\nImport report:';
+        console.log(chalk.cyan(reportTitle));
         if (imported.length) {
-          console.log(chalk.green(`  Imported: ${imported.join(', ')}`));
+          const importLabel = options.dryRun ? 'Would import' : 'Imported';
+          console.log(chalk.green(`  ${importLabel}: ${imported.join(', ')}`));
         }
         if (updated.length) {
-          console.log(chalk.yellow(`  Updated: ${updated.join(', ')}`));
+          const updateLabel = options.dryRun ? 'Would update' : 'Updated';
+          console.log(chalk.yellow(`  ${updateLabel}: ${updated.join(', ')}`));
         }
         if (skipped.length) {
           console.log(chalk.gray(`  Skipped: ${skipped.join(', ')}`));

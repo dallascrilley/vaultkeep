@@ -160,6 +160,7 @@ program
   .command('import <file>')
   .description('Import secrets from a .env file into 1Password')
   .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('--dry-run', 'preview what would be imported without modifying')
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(importCommand);
