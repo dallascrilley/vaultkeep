@@ -1,17 +1,25 @@
 import chalk from 'chalk';
-import ora from 'ora';
 import { checkOpCli, getItemFromShareLink } from '../utils/op.js';
+import {
+  applyColorConfig,
+  createSpinner,
+  resolveBooleanOption,
+} from '../utils/cli.js';
 import { OpError } from '../utils/types.js';
 import type { OpField, OpItem } from '../utils/types.js';
 
 export interface ResolveOptions {
   json?: boolean;
+  quiet?: boolean;
+  color?: boolean;
 }
 
 export interface ResolveDependencies {
   checkOpCli: typeof checkOpCli;
   resolveShareLink: (shareLink: string) => OpItem;
-  createSpinner: (text: string) => ReturnType<typeof ora>;
+  createSpinner: typeof createSpinner;
+  applyColorConfig: typeof applyColorConfig;
+  resolveBooleanOption: typeof resolveBooleanOption;
 }
 
 interface ConcealedField {
@@ -28,7 +36,9 @@ interface ResolvedField {
 const defaultDependencies: ResolveDependencies = {
   checkOpCli,
   resolveShareLink: getItemFromShareLink,
-  createSpinner: (text: string) => ora(text).start(),
+  createSpinner,
+  applyColorConfig,
+  resolveBooleanOption,
 };
 
 function normalizeVaultName(item: OpItem): string {
@@ -105,11 +115,16 @@ export function createResolveCommand(
     options: ResolveOptions
   ): Promise<void> {
     try {
+      const envQuiet = deps.resolveBooleanOption(undefined, 'OPS_QUIET');
+      const quiet = options.quiet === true || envQuiet;
+      const envNoColor = deps.resolveBooleanOption(undefined, 'OPS_NO_COLOR');
+      const noColor = options.color === false || envNoColor;
+      deps.applyColorConfig(noColor);
+
       deps.checkOpCli();
 
-      const spinner = options.json
-        ? null
-        : deps.createSpinner('Resolving share link...');
+      const quietSpinner = quiet || options.json === true;
+      const spinner = deps.createSpinner('Resolving share link...', quietSpinner);
       const item = deps.resolveShareLink(shareLink);
       const vaultName = normalizeVaultName(item);
       const concealedFields = listConcealedFields(item.fields);
@@ -117,9 +132,7 @@ export function createResolveCommand(
       const primaryField = selectPrimaryField(concealedFields);
       const fieldId = primaryField?.id;
 
-      if (spinner) {
-        spinner.succeed(chalk.green('Share link resolved.'));
-      }
+      spinner.succeed(chalk.green('Share link resolved.'));
 
       const opReference = fieldId
         ? `op://${vaultName}/${item.title}/${fieldId}`

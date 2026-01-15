@@ -28,6 +28,11 @@ export async function setCommand(
   options: SetOptions
 ): Promise<void> {
   try {
+    // Validate name is not empty
+    if (!name || name.trim().length === 0) {
+      throw new OpError('Secret name cannot be empty.', 2);
+    }
+
     checkOpCli();
 
     if (options.value && options.valueFile) {

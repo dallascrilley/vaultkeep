@@ -41,8 +41,22 @@ export function isInteractiveInput(): boolean {
 }
 
 export function createSpinner(text: string, quiet: boolean) {
+  // When quiet or non-TTY, return a no-op spinner that outputs nothing
+  if (quiet || !process.stderr.isTTY) {
+    return {
+      start: () => {},
+      stop: () => {},
+      succeed: () => {},
+      fail: () => {},
+      warn: () => {},
+      info: () => {},
+      text: '',
+    } as ReturnType<typeof ora>;
+  }
+
+  // Use stderr so spinner output doesn't pollute stdout (important for piping)
   return ora({
     text,
-    isEnabled: Boolean(process.stdout.isTTY) && !quiet,
+    stream: process.stderr,
   }).start();
 }

@@ -57,8 +57,8 @@ program
   .argument('<command...>', 'command to run')
   .passThroughOptions()
   .allowUnknownOption(true)
-  .option('-v, --vault <vault>', 'vault name', 'Private')
-  .option('-f, --field <field>', 'field name', 'password')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
   .option(
     '-e, --env <pair>',
     'map env var to secret name (repeatable, e.g. --env API_KEY=MY_SECRET)',
@@ -66,6 +66,7 @@ program
     []
   )
   .option('--env-file <file>', 'env mapping file (default: .env.ops)')
+  .option('--no-color', 'disable color output')
   .action(runCommand);
 
 program
@@ -138,13 +139,17 @@ program
 program
   .command('import <file>')
   .description('Import secrets from a .env file into 1Password')
-  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
   .action(importCommand);
 
 program
   .command('resolve <shareLink>')
   .description('Resolve a 1Password share link to ops references')
   .option('-j, --json', 'output as JSON')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
   .action(resolveCommand);
 
 // Error handling
