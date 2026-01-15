@@ -120,6 +120,12 @@ ops list --favorites
 ops list
 ```
 
+### Resolve a 1Password share link
+```bash
+# Turn a share link into op:// and ops get commands
+ops resolve "https://share.1password.com/s#..."
+```
+
 ### Search for secrets
 ```bash
 # Find all GitHub-related secrets
@@ -141,6 +147,15 @@ ops export --format json | jq -r 'to_entries[] | "\(.key)=\(.value)"'
 
 # Export to file
 ops export --format json --output secrets.json
+```
+
+### Import from .env
+```bash
+# Import secrets from a local env file
+ops import .env
+
+# Import into a specific vault
+ops import .env --vault Work
 ```
 
 ### Run a command with secrets injected

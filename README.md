@@ -109,6 +109,16 @@ ops export --format json --output secrets.json
 ops export --vault Work --output work.env
 ```
 
+### Import secrets
+
+```bash
+# Import from a .env file (KEY=VALUE per line)
+ops import .env
+
+# Import into a specific vault
+ops import .env --vault Work
+```
+
 ### Run a command with injected secrets
 
 Create a `.env.ops` file that maps environment variables to secret names:
@@ -126,6 +136,18 @@ ops run -- node app.js
 # Or inline mappings
 ops run --env API_KEY=MY_API_KEY_SECRET -- node app.js
 ```
+
+### Resolve a share link
+
+```bash
+# Resolve a 1Password share link to an op:// reference
+ops resolve "https://share.1password.com/s#..."
+
+# JSON output for scripting
+ops resolve "https://share.1password.com/s#..." --json
+```
+
+Outputs all available fields (id/label/type) so you can pick the right `--field`.
 
 ## Integration with AGENTS.md Pattern
 
@@ -187,7 +209,9 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `search <query>` | Search items by title | `-v, --vault`, `-j, --json` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
+| `import <file>` | Import secrets from .env | `-v, --vault` |
 | `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file` |
+| `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
 
 ## Development
 
