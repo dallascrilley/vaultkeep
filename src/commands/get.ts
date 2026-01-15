@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, getItem, getDefaultFieldForCategory } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -29,6 +29,8 @@ export interface GetDependencies {
   itemExists: typeof itemExists;
   getItemFields: typeof getItemFields;
   findSimilarItems: typeof findSimilarItems;
+  getItem: typeof getItem;
+  getDefaultFieldForCategory: typeof getDefaultFieldForCategory;
   prompt: typeof inquirer.prompt;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -45,6 +47,8 @@ const defaultDependencies: GetDependencies = {
   itemExists,
   getItemFields,
   findSimilarItems,
+  getItem,
+  getDefaultFieldForCategory,
   prompt: inquirer.prompt,
   applyColorConfig,
   createSpinner,
@@ -76,7 +80,21 @@ export function createGetCommand(
       }
 
       const vault = deps.resolveVault(options.vault);
-      const field = deps.resolveField(options.field);
+      
+      // Smart field detection: if no field specified, try to detect from item category
+      let field: string;
+      if (options.field) {
+        field = deps.resolveField(options.field);
+      } else {
+        // Check if item exists and get its category for smart field detection
+        const item = deps.getItem(name, vault);
+        if (item?.category) {
+          field = deps.getDefaultFieldForCategory(item.category);
+        } else {
+          field = deps.resolveField(undefined);
+        }
+      }
+      
       const envQuiet = deps.resolveBooleanOption(undefined, 'OPS_QUIET');
       const quiet = options.quiet === true || envQuiet;
       const envNoInput = deps.resolveBooleanOption(undefined, 'OPS_NO_INPUT');

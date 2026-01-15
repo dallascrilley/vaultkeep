@@ -6,8 +6,9 @@ const consoleOutput: string[] = [];
 let secretValue: string | null = null;
 let itemExists = true;
 let itemFields: string[] = ['token', 'username', 'notes'];
+let itemCategory: string | null = null;
 
-function buildGetCommand() {
+function buildGetCommand(overrides: Record<string, any> = {}) {
   return createGetCommand({
     getSecret: () => secretValue,
     setSecret: () => {},
@@ -15,6 +16,15 @@ function buildGetCommand() {
     itemExists: () => itemExists,
     getItemFields: () => itemFields,
     findSimilarItems: () => [],
+    getItem: () => itemCategory ? { category: itemCategory, fields: [] } : null,
+    getDefaultFieldForCategory: (cat: string) => {
+      const defaults: Record<string, string> = {
+        API_CREDENTIAL: 'credential',
+        LOGIN: 'password',
+        SECURE_NOTE: 'notesPlain',
+      };
+      return defaults[cat] || 'password';
+    },
     prompt: async () => ({ create: false }),
     applyColorConfig: () => {},
     createSpinner: () => ({
@@ -26,6 +36,7 @@ function buildGetCommand() {
     resolveBooleanOption: () => false,
     resolveField: (v?: string) => v ?? 'password',
     resolveVault: (v?: string) => v ?? 'Private',
+    ...overrides,
   });
 }
 
@@ -34,6 +45,78 @@ afterEach(() => {
   secretValue = null;
   itemExists = true;
   itemFields = ['token', 'username', 'notes'];
+  itemCategory = null;
+});
+
+test('uses smart field detection for API_CREDENTIAL items', async () => {
+  itemCategory = 'API_CREDENTIAL';
+  let usedField: string | null = null;
+  
+  const getCommand = buildGetCommand({
+    getSecret: (_name: string, _vault: string, field: string) => {
+      usedField = field;
+      return 'my-api-key';
+    },
+  });
+
+  const logOutput: string[] = [];
+  const logMock = mock.method(console, 'log', (msg: string) => {
+    logOutput.push(msg);
+  });
+
+  // Don't specify --field, should auto-detect 'credential' for API_CREDENTIAL
+  await getCommand('My API Key', {});
+
+  assert.equal(usedField, 'credential', 'Should use credential field for API_CREDENTIAL items');
+
+  logMock.mock.restore();
+});
+
+test('uses password field for LOGIN items', async () => {
+  itemCategory = 'LOGIN';
+  let usedField: string | null = null;
+  
+  const getCommand = buildGetCommand({
+    getSecret: (_name: string, _vault: string, field: string) => {
+      usedField = field;
+      return 'my-password';
+    },
+  });
+
+  const logOutput: string[] = [];
+  const logMock = mock.method(console, 'log', (msg: string) => {
+    logOutput.push(msg);
+  });
+
+  await getCommand('My Login', {});
+
+  assert.equal(usedField, 'password', 'Should use password field for LOGIN items');
+
+  logMock.mock.restore();
+});
+
+test('respects explicit --field option over smart detection', async () => {
+  itemCategory = 'API_CREDENTIAL';
+  let usedField: string | null = null;
+  
+  const getCommand = buildGetCommand({
+    getSecret: (_name: string, _vault: string, field: string) => {
+      usedField = field;
+      return 'my-secret';
+    },
+  });
+
+  const logOutput: string[] = [];
+  const logMock = mock.method(console, 'log', (msg: string) => {
+    logOutput.push(msg);
+  });
+
+  // Explicitly specify --field token
+  await getCommand('My API Key', { field: 'token' });
+
+  assert.equal(usedField, 'token', 'Should use explicit field over smart detection');
+
+  logMock.mock.restore();
 });
 
 test('suggests available fields when field not found', async () => {

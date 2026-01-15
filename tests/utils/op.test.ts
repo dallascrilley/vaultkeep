@@ -1,6 +1,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getItemFields } from '../../src/utils/op.js';
+import { getItemFields, getDefaultFieldForCategory } from '../../src/utils/op.js';
+
+test('getDefaultFieldForCategory returns credential for API_CREDENTIAL', async () => {
+  assert.equal(getDefaultFieldForCategory('API_CREDENTIAL'), 'credential');
+});
+
+test('getDefaultFieldForCategory returns password for LOGIN', async () => {
+  assert.equal(getDefaultFieldForCategory('LOGIN'), 'password');
+});
+
+test('getDefaultFieldForCategory returns password for PASSWORD', async () => {
+  assert.equal(getDefaultFieldForCategory('PASSWORD'), 'password');
+});
+
+test('getDefaultFieldForCategory returns notesPlain for SECURE_NOTE', async () => {
+  assert.equal(getDefaultFieldForCategory('SECURE_NOTE'), 'notesPlain');
+});
+
+test('getDefaultFieldForCategory returns password for unknown category', async () => {
+  assert.equal(getDefaultFieldForCategory('UNKNOWN_CATEGORY'), 'password');
+});
 
 test('getItemFields returns field labels from item', async (t) => {
   // Test that the function is exported and callable
