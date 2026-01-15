@@ -86,3 +86,24 @@ test('exits with error when secret is missing', async () => {
   exitMock.mock.restore();
   errorMock.mock.restore();
 });
+
+test('copy logs when clipboard is cleared', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const consoleOutput: string[] = [];
+  const logMock = mock.method(console, 'log', (msg: string) => {
+    consoleOutput.push(msg);
+  });
+
+  const copyCommand = buildCopyCommand();
+  await copyCommand('MY_SECRET', {});
+
+  mock.timers.tick(30000);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.ok(
+    consoleOutput.some((line) => line.includes('Clipboard cleared')),
+    'Should log "Clipboard cleared" after TTL expires'
+  );
+
+  logMock.mock.restore();
+});

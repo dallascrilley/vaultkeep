@@ -98,6 +98,9 @@ export function createCopyCommand(
           const current = await deps.clipboardRead();
           if (current === secret) {
             await deps.clipboardWrite('');
+            if (!quiet) {
+              console.log(chalk.gray('✓ Clipboard cleared'));
+            }
           }
         } catch {
           // Best-effort clipboard cleanup.
