@@ -22,7 +22,10 @@ export interface SecretConfig {
 export interface ExportOptions {
   vault?: string;
   format?: 'env' | 'json';
+  json?: boolean;
   output?: string;
+  quiet?: boolean;
+  color?: boolean;
 }
 
 export class OpError extends Error {
