@@ -54,6 +54,11 @@ export TOKEN=$(ops get GITHUB_TOKEN --silent)
 echo $TOKEN  # Just the value, no UI
 ```
 
+### 5. Resolve a share link
+```bash
+ops resolve "https://share.1password.com/s#..."
+```
+
 ## Common Workflows
 
 ### Setup a new project
