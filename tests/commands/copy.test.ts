@@ -60,6 +60,15 @@ test('copies secret to clipboard and clears after default ttl', async () => {
   );
 });
 
+test('copies empty secrets without treating them as missing', async () => {
+  secretValue = '';
+  const copyCommand = buildCopyCommand();
+
+  await copyCommand('EMPTY_SECRET', {});
+
+  assert.deepEqual(clipboardWrites, ['']);
+});
+
 test('exits with error when secret is missing', async () => {
   secretValue = null;
   const copyCommand = buildCopyCommand();
