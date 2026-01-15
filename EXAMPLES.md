@@ -143,6 +143,16 @@ ops export --format json | jq -r 'to_entries[] | "\(.key)=\(.value)"'
 ops export --format json --output secrets.json
 ```
 
+### Run a command with secrets injected
+```bash
+# .env.ops maps env vars to secret names
+cat <<EOF > .env.ops
+API_KEY=MY_API_KEY_SECRET
+EOF
+
+ops run -- node app.js
+```
+
 ### Batch create secrets
 ```bash
 # Create multiple secrets

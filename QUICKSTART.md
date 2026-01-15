@@ -70,6 +70,17 @@ npm install
 npm run dev
 ```
 
+### Run a command with secrets injected
+```bash
+# Create a mapping file
+cat <<EOF > .env.ops
+API_KEY=MY_API_KEY_SECRET
+EOF
+
+# Run a command with the injected env
+ops run -- node app.js
+```
+
 ### Store multiple secrets
 ```bash
 ops set OPENAI_API_KEY

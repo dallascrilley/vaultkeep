@@ -70,7 +70,13 @@ function loadEnvFile(
   }
 
   const content = deps.readFileSync(path, 'utf-8');
-  return deps.parseEnv(content);
+  try {
+    return deps.parseEnv(content);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Unable to parse env file.';
+    throw new OpError(`Failed to parse "${path}": ${message}`, 2);
+  }
 }
 
 const defaultDependencies: RunDependencies = {

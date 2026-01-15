@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createRunCommand, ProcessLike } from '../../src/commands/run.js';
@@ -77,4 +77,35 @@ test('uses --env overrides when provided', async () => {
 
   assert.equal(spawnCalls.length, 1);
   assert.equal(spawnCalls[0].options.env.API_KEY, 'override-value');
+});
+
+test('exits with OpError when env file parsing fails', async () => {
+  const processMock = createProcessMock({});
+  const exitCalls: number[] = [];
+  const exitMock = mock.method(process, 'exit', (code?: number) => {
+    exitCalls.push(code ?? 0);
+    throw new Error('process.exit');
+  });
+  const errorMock = mock.method(console, 'error', () => {});
+
+  const runCommand = createRunCommand({
+    checkOpCli: () => {},
+    getSecret: () => 'value',
+    readFileSync: ((path: string, encoding: BufferEncoding) =>
+      'INVALID_LINE') as typeof readFileSyncType,
+    existsSync: () => true,
+    parseEnv: () => {
+      throw new Error('Parse failure');
+    },
+    spawn: (() => {
+      throw new Error('spawn should not be called');
+    }) as unknown as typeof spawnType,
+    process: processMock,
+  });
+
+  await assert.rejects(() => runCommand(['echo', 'ok'], {}), /process\.exit/);
+  assert.equal(exitCalls[0], 2);
+
+  exitMock.mock.restore();
+  errorMock.mock.restore();
 });
