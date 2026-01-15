@@ -13,7 +13,7 @@
     "dev": "ts-node src/index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "node --test",
+    "test": "TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
