@@ -439,7 +439,8 @@ export function listVaults(): OpVault[] {
       env,
     });
     return JSON.parse(output);
-  } catch (error: any) {
-    throw new OpError(`Failed to list vaults: ${error.message}`, 1);
+  } catch (error: unknown) {
+    const message = formatOpErrorMessage(error);
+    throw new OpError(`Failed to list vaults${message ? ': ' + message : ''}`, 1);
   }
 }
