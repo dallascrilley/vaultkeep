@@ -419,3 +419,27 @@ export function searchItems(query: string, vault: string = 'Private'): OpItem[] 
     item.title.toLowerCase().includes(query.toLowerCase())
   );
 }
+
+export interface OpVault {
+  id: string;
+  name: string;
+  type: string;
+}
+
+/**
+ * List all vaults accessible to the user
+ */
+export function listVaults(): OpVault[] {
+  const env = getOpEnv();
+
+  try {
+    const output = execSync('op vault list --format=json', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      env,
+    });
+    return JSON.parse(output);
+  } catch (error: any) {
+    throw new OpError(`Failed to list vaults: ${error.message}`, 1);
+  }
+}
