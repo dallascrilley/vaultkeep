@@ -141,3 +141,55 @@ test('retrieves secret successfully when it exists', async () => {
 
   logMock.mock.restore();
 });
+
+test('suggests similar secret names when not found', async () => {
+  secretValue = null;
+  itemExists = false;
+
+  const getCommand = createGetCommand({
+    getSecret: () => null,
+    setSecret: () => {},
+    checkOpCli: () => {},
+    itemExists: () => false,
+    getItemFields: () => [],
+    findSimilarItems: () => ['GITHUB_TOKEN', 'GITHUB_PAT'],
+    prompt: async () => ({ create: false }),
+    applyColorConfig: () => {},
+    createSpinner: () => ({
+      succeed: () => {},
+      fail: (msg?: string) => { if (msg) consoleOutput.push(msg); },
+      stop: () => {},
+    }) as any,
+    isInteractiveInput: () => false,
+    resolveBooleanOption: () => false,
+    resolveField: (v?: string) => v ?? 'password',
+    resolveVault: (v?: string) => v ?? 'Private',
+  });
+
+  const exitCalls: number[] = [];
+  const errorOutput: string[] = [];
+  const logOutput: string[] = [];
+  const exitMock = mock.method(process, 'exit', (code?: number) => {
+    exitCalls.push(code ?? 0);
+    throw new Error('process.exit');
+  });
+  const errorMock = mock.method(console, 'error', (msg: string) => {
+    errorOutput.push(msg);
+  });
+  const logMock = mock.method(console, 'log', (msg: string) => {
+    logOutput.push(msg);
+  });
+
+  // Typo: GITUB instead of GITHUB
+  await assert.rejects(() => getCommand('GITUB_TOKEN', {}), /process\.exit/);
+
+  const allOutput = [...consoleOutput, ...errorOutput, ...logOutput].join(' ');
+  assert.ok(
+    allOutput.includes('GITHUB_TOKEN') || allOutput.includes('Did you mean'),
+    `Expected suggestions in output: ${allOutput}`
+  );
+
+  exitMock.mock.restore();
+  errorMock.mock.restore();
+  logMock.mock.restore();
+});

@@ -420,6 +420,52 @@ export function searchItems(query: string, vault: string = 'Private'): OpItem[] 
   );
 }
 
+/**
+ * Find similar item names using simple string matching
+ */
+export function findSimilarItems(
+  query: string,
+  vault: string = 'Private',
+  maxResults: number = 3
+): string[] {
+  const items = listItems(vault);
+  const queryLower = query.toLowerCase();
+
+  // Score items by similarity
+  const scored = items
+    .map((item) => {
+      const titleLower = item.title.toLowerCase();
+      let score = 0;
+
+      // Exact substring match
+      if (titleLower.includes(queryLower) || queryLower.includes(titleLower)) {
+        score += 50;
+      }
+
+      // Word overlap
+      const queryWords = queryLower.split(/[_\-\s]+/);
+      const titleWords = titleLower.split(/[_\-\s]+/);
+      for (const qw of queryWords) {
+        for (const tw of titleWords) {
+          if (tw.includes(qw) || qw.includes(tw)) {
+            score += 20;
+          }
+        }
+      }
+
+      // Character overlap ratio
+      const commonChars = [...queryLower].filter((c) => titleLower.includes(c)).length;
+      score += Math.floor((commonChars / queryLower.length) * 30);
+
+      return { title: item.title, score };
+    })
+    .filter((item) => item.score > 20)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxResults);
+
+  return scored.map((item) => item.title);
+}
+
 export interface OpVault {
   id: string;
   name: string;
