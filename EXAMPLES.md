@@ -120,6 +120,12 @@ ops list --favorites
 ops list
 ```
 
+### Resolve a 1Password share link
+```bash
+# Turn a share link into op:// and ops get commands
+ops resolve "https://share.1password.com/s#..."
+```
+
 ### Search for secrets
 ```bash
 # Find all GitHub-related secrets

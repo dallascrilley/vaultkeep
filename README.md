@@ -119,6 +119,18 @@ ops import .env
 ops import .env --vault Work
 ```
 
+### Resolve a share link
+
+```bash
+# Resolve a 1Password share link to an op:// reference
+ops resolve "https://share.1password.com/s#..."
+
+# JSON output for scripting
+ops resolve "https://share.1password.com/s#..." --json
+```
+
+Outputs all available fields (id/label/type) so you can pick the right `--field`.
+
 ## Integration with AGENTS.md Pattern
 
 This tool follows the pattern in §13 of AGENTS.md:
@@ -180,6 +192,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
 | `import <file>` | Import secrets from .env | `-v, --vault` |
+| `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
 
 ## Development
 

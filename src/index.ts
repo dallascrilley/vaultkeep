@@ -5,6 +5,7 @@ import { listCommand } from './commands/list.js';
 import { setCommand } from './commands/set.js';
 import { exportCommand } from './commands/export.js';
 import { importCommand } from './commands/import.js';
+import { resolveCommand } from './commands/resolve.js';
 
 const program = new Command();
 
@@ -67,6 +68,12 @@ program
   .description('Import secrets from a .env file into 1Password')
   .option('-v, --vault <vault>', 'vault name', 'Private')
   .action(importCommand);
+
+program
+  .command('resolve <shareLink>')
+  .description('Resolve a 1Password share link to ops references')
+  .option('-j, --json', 'output as JSON')
+  .action(resolveCommand);
 
 // Error handling
 process.on('uncaughtException', (error: Error) => {
