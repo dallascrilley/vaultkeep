@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createImportCommand } from '../../src/commands/import.js';
 import type oraType from 'ora';
@@ -83,4 +83,34 @@ test('skips existing secrets when user chooses skip', async () => {
 
   assert.equal(created.length, 0);
   assert.equal(updated.length, 0);
+});
+
+test('exits with OpError when env parsing fails', async () => {
+  const exitCalls: number[] = [];
+  const exitMock = mock.method(process, 'exit', (code?: number) => {
+    exitCalls.push(code ?? 0);
+    throw new Error('process.exit');
+  });
+  const errorMock = mock.method(console, 'error', () => {});
+
+  const importCommand = createImportCommand({
+    checkOpCli: () => {},
+    readFileSync: ((path: string, encoding: BufferEncoding) =>
+      'INVALID_LINE') as typeof readFileSyncType,
+    parseEnv: () => {
+      throw new Error('Parse failure');
+    },
+    getItem: () => null,
+    createItem: () => {},
+    updateItem: () => {},
+    prompt: (async () => ({ action: 'skip' })) as unknown as typeof inquirer.prompt,
+    isInteractive: () => true,
+    createSpinner: () => createSpinner(),
+  });
+
+  await assert.rejects(() => importCommand('.env', {}), /process\.exit/);
+  assert.equal(exitCalls[0], 2);
+
+  exitMock.mock.restore();
+  errorMock.mock.restore();
 });

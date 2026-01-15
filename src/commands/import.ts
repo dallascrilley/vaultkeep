@@ -56,7 +56,15 @@ export function createImportCommand(
           error instanceof Error ? error.message : 'Unable to read file.';
         throw new OpError(`Failed to read "${filePath}": ${message}`, 2);
       }
-      const entries = Object.entries(deps.parseEnv(contents));
+      let parsed: Record<string, string>;
+      try {
+        parsed = deps.parseEnv(contents);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to parse env file.';
+        throw new OpError(`Failed to parse "${filePath}": ${message}`, 2);
+      }
+      const entries = Object.entries(parsed);
 
       if (entries.length === 0) {
         console.log(chalk.yellow('No entries found to import.'));
