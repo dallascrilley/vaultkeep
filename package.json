@@ -1,11 +1,17 @@
 {
-  "name": "op-cli-helper",
+  "name": "dc-ops-cli",
   "version": "1.0.0",
   "description": "Easy secret retrieval from 1Password with smart fallbacks",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "ops": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build:bin": "bun build --compile src/index.ts --outfile bin/ops",
