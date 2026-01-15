@@ -19,6 +19,12 @@ interface ConcealedField {
   label?: string;
 }
 
+interface ResolvedField {
+  id: string;
+  label?: string;
+  type: string;
+}
+
 const defaultDependencies: ResolveDependencies = {
   checkOpCli,
   resolveShareLink: getItemFromShareLink,
@@ -59,6 +65,19 @@ function listConcealedFields(fields?: OpField[]): ConcealedField[] {
     });
 }
 
+function listAllFields(fields?: OpField[]): ResolvedField[] {
+  if (!fields) {
+    return [];
+  }
+
+  return fields.map((field) => {
+    const id = field.id?.trim() || field.label?.trim() || 'field';
+    const label = field.label?.trim() || undefined;
+    const type = field.type || 'UNKNOWN';
+    return { id, label, type };
+  });
+}
+
 function selectPrimaryField(fields: ConcealedField[]): ConcealedField | null {
   if (fields.length === 0) {
     return null;
@@ -92,6 +111,7 @@ export function createResolveCommand(
       const item = deps.resolveShareLink(shareLink);
       const vaultName = normalizeVaultName(item);
       const concealedFields = listConcealedFields(item.fields);
+      const allFields = listAllFields(item.fields);
       const primaryField = selectPrimaryField(concealedFields);
       const fieldId = primaryField?.id;
 
@@ -116,9 +136,10 @@ export function createResolveCommand(
                     label: primaryField?.label ?? null,
                   }
                 : null,
-              fields: concealedFields.map((field) => ({
+              fields: allFields.map((field) => ({
                 id: field.id,
                 label: field.label ?? null,
+                type: field.type,
               })),
               opReference,
               opsGet,
@@ -152,12 +173,11 @@ export function createResolveCommand(
       console.log(chalk.cyan('\nUse with ops:'));
       console.log(chalk.white(`  ${opsGet}`));
 
-      const secondaryFields = concealedFields.filter((field) => field !== primaryField);
-      if (secondaryFields.length > 0) {
-        console.log(chalk.gray('\nOther concealed fields:'));
-        secondaryFields.forEach((field) => {
+      if (allFields.length > 0) {
+        console.log(chalk.cyan('\nFields:'));
+        allFields.forEach((field) => {
           const labelSuffix = field.label && field.label !== field.id ? ` (${field.label})` : '';
-          console.log(chalk.gray(`  - ${field.id}${labelSuffix}`));
+          console.log(chalk.white(`  - ${field.id}${labelSuffix} [${field.type}]`));
         });
       }
     } catch (error) {

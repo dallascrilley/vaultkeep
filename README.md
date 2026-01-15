@@ -119,6 +119,8 @@ ops resolve "https://share.1password.com/s#..."
 ops resolve "https://share.1password.com/s#..." --json
 ```
 
+Outputs all available fields (id/label/type) so you can pick the right `--field`.
+
 ## Integration with AGENTS.md Pattern
 
 This tool follows the pattern in §13 of AGENTS.md:
