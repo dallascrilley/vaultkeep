@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli, itemExists, getItemFields } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -28,6 +28,7 @@ export interface GetDependencies {
   checkOpCli: typeof checkOpCli;
   itemExists: typeof itemExists;
   getItemFields: typeof getItemFields;
+  findSimilarItems: typeof findSimilarItems;
   prompt: typeof inquirer.prompt;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -43,6 +44,7 @@ const defaultDependencies: GetDependencies = {
   checkOpCli,
   itemExists,
   getItemFields,
+  findSimilarItems,
   prompt: inquirer.prompt,
   applyColorConfig,
   createSpinner,
@@ -138,6 +140,15 @@ export function createGetCommand(
 
       if (!quietSpinner) {
         spinner.fail(chalk.yellow(`Secret "${name}" not found in vault "${vault}"`));
+      }
+
+      // Suggest similar names
+      const similar = deps.findSimilarItems(name, vault);
+      if (similar.length > 0 && !noInput) {
+        console.log(chalk.cyan('\nDid you mean?'));
+        for (const suggestion of similar) {
+          console.log(chalk.white(`  - ${suggestion}`));
+        }
       }
 
       const canPrompt = !noInput && deps.isInteractiveInput();
