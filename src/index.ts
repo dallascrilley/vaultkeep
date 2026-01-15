@@ -9,6 +9,7 @@ import { importCommand } from './commands/import.js';
 import { resolveCommand } from './commands/resolve.js';
 import { runCommand } from './commands/run.js';
 import { inspectCommand } from './commands/inspect.js';
+import { vaultsCommand } from './commands/vaults.js';
 
 const program = new Command();
 
@@ -134,6 +135,14 @@ program
       favorites: true,
     })
   );
+
+program
+  .command('vaults')
+  .description('List available vaults')
+  .option('-j, --json', 'output as JSON')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
+  .action(vaultsCommand);
 
 program
   .command('export')
