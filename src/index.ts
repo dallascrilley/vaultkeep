@@ -5,6 +5,9 @@ import { listCommand } from './commands/list.js';
 import { setCommand } from './commands/set.js';
 import { exportCommand } from './commands/export.js';
 import { copyCommand } from './commands/copy.js';
+import { importCommand } from './commands/import.js';
+import { resolveCommand } from './commands/resolve.js';
+import { runCommand } from './commands/run.js';
 
 const program = new Command();
 
@@ -15,6 +18,8 @@ program
   .addHelpCommand()
   .showHelpAfterError()
   .showSuggestionAfterError();
+
+program.enablePositionalOptions();
 
 program
   .command('get <name>')
@@ -41,6 +46,23 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(setCommand);
+
+program
+  .command('run')
+  .description('Run a command with secrets injected into the environment')
+  .argument('<command...>', 'command to run')
+  .passThroughOptions()
+  .allowUnknownOption(true)
+  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .option('-f, --field <field>', 'field name', 'password')
+  .option(
+    '-e, --env <pair>',
+    'map env var to secret name (repeatable, e.g. --env API_KEY=MY_SECRET)',
+    (value, previous: string[] = []) => [...previous, value],
+    []
+  )
+  .option('--env-file <file>', 'env mapping file (default: .env.ops)')
+  .action(runCommand);
 
 program
   .command('copy <name>')
@@ -108,6 +130,18 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(exportCommand);
+
+program
+  .command('import <file>')
+  .description('Import secrets from a .env file into 1Password')
+  .option('-v, --vault <vault>', 'vault name', 'Private')
+  .action(importCommand);
+
+program
+  .command('resolve <shareLink>')
+  .description('Resolve a 1Password share link to ops references')
+  .option('-j, --json', 'output as JSON')
+  .action(resolveCommand);
 
 // Error handling
 process.on('uncaughtException', (error: Error) => {

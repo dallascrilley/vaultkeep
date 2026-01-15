@@ -66,6 +66,16 @@ cat token.txt | ops set GITHUB_TOKEN --value -
 ops set GITHUB_TOKEN --vault Work
 ```
 
+### Copy a secret to the clipboard
+
+```bash
+# Copy and clear after 30s
+ops copy GITHUB_TOKEN
+
+# Custom TTL
+ops copy GITHUB_TOKEN --ttl 10
+```
+
 ### List secrets
 
 ```bash
@@ -121,6 +131,46 @@ ops export --json
 # From specific vault
 ops export --vault Work --output work.env
 ```
+
+### Import secrets
+
+```bash
+# Import from a .env file (KEY=VALUE per line)
+ops import .env
+
+# Import into a specific vault
+ops import .env --vault Work
+```
+
+### Run a command with injected secrets
+
+Create a `.env.ops` file that maps environment variables to secret names:
+
+```
+API_KEY=MY_API_KEY_SECRET
+DB_PASSWORD=MY_DB_PASSWORD
+```
+
+Then run:
+
+```bash
+ops run -- node app.js
+
+# Or inline mappings
+ops run --env API_KEY=MY_API_KEY_SECRET -- node app.js
+```
+
+### Resolve a share link
+
+```bash
+# Resolve a 1Password share link to an op:// reference
+ops resolve "https://share.1password.com/s#..."
+
+# JSON output for scripting
+ops resolve "https://share.1password.com/s#..." --json
+```
+
+Outputs all available fields (id/label/type) so you can pick the right `--field`.
 
 ## Integration with AGENTS.md Pattern
 
@@ -178,10 +228,14 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 |---------|-------------|---------|
 | `get <name>` | Get a secret | `-v, --vault`, `-f, --field`, `--plain`, `--json`, `-s, --silent`, `--no-input` |
 | `set <name>` | Store a secret | `-v, --vault`, `-f, --field`, `--value`, `--value-file`, `--force`, `--no-input` |
+| `copy <name>` | Copy a secret to clipboard | `-v, --vault`, `-f, --field`, `--ttl`, `-q, --quiet` |
 | `list` | List vault items | `-v, --vault`, `-s, --search`, `-j, --json`, `--plain`, `--favorites` |
 | `search <query>` | Search items by title | `-v, --vault`, `-j, --json`, `--plain` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json`, `--plain` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-j, --json`, `-o, --output` |
+| `import <file>` | Import secrets from .env | `-v, --vault` |
+| `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file` |
+| `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
 
 ## Development
 
