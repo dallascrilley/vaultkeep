@@ -85,6 +85,43 @@ test('skips existing secrets when user chooses skip', async () => {
   assert.equal(updated.length, 0);
 });
 
+test('dry-run mode does not call createItem or updateItem', async () => {
+  const created: Array<string> = [];
+  const updated: Array<string> = [];
+  const spinner = createSpinner();
+
+  const importCommand = createImportCommand({
+    checkOpCli: () => {},
+    readFileSync: ((path: string, encoding: BufferEncoding) =>
+      'API_KEY=one\nDB_PASS=two\nEXISTING=three') as typeof readFileSyncType,
+    parseEnv: () => ({ API_KEY: 'one', DB_PASS: 'two', EXISTING: 'three' }),
+    getItem: (name: string) =>
+      name === 'EXISTING'
+        ? { id: '1', title: 'EXISTING', vault: 'Private', category: 'password' }
+        : null,
+    createItem: (title: string) => {
+      created.push(title);
+    },
+    updateItem: (title: string) => {
+      updated.push(title);
+    },
+    prompt: (async () => ({ action: 'update' })) as unknown as typeof inquirer.prompt,
+    isInteractive: () => true,
+    createSpinner: () => spinner,
+  });
+
+  await importCommand('.env', { dryRun: true });
+
+  // Verify no mutations occurred
+  assert.equal(created.length, 0, 'createItem should not be called in dry-run mode');
+  assert.equal(updated.length, 0, 'updateItem should not be called in dry-run mode');
+  // Verify dry-run indicator is shown
+  assert.ok(
+    spinner.succeedMessages.some((msg) => msg.includes('[DRY RUN]')),
+    'Output should include [DRY RUN] indicator'
+  );
+});
+
 test('exits with OpError when env parsing fails', async () => {
   const exitCalls: number[] = [];
   const exitMock = mock.method(process, 'exit', (code?: number) => {
