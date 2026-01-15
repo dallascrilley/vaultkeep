@@ -17,7 +17,11 @@ program
   .version('1.0.0')
   .addHelpCommand()
   .showHelpAfterError()
-  .showSuggestionAfterError();
+  .showSuggestionAfterError()
+  .action(() => {
+    // Show help when no command is provided (exit 0, not 1)
+    program.outputHelp();
+  });
 
 program.enablePositionalOptions();
 

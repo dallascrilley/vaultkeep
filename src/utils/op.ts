@@ -212,6 +212,27 @@ export function listItems(vault: string = 'Private'): OpItem[] {
 }
 
 /**
+ * Check if an item exists in the vault (regardless of field)
+ */
+export function itemExists(
+  title: string,
+  vault: string = 'Private'
+): boolean {
+  const env = getOpEnv();
+
+  try {
+    execSync(`op item get "${title}" --vault="${vault}" --format=json`, {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      env,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Get a secret from 1Password
  */
 export function getSecret(
@@ -220,7 +241,7 @@ export function getSecret(
   field: string = 'password'
 ): string | null {
   const env = getOpEnv();
-  
+
   try {
     // Try direct reference first (op://vault/item/field)
     if (reference.startsWith('op://')) {

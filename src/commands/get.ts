@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -26,6 +26,7 @@ export interface GetDependencies {
   getSecret: typeof getSecret;
   setSecret: typeof setSecret;
   checkOpCli: typeof checkOpCli;
+  itemExists: typeof itemExists;
   prompt: typeof inquirer.prompt;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -39,6 +40,7 @@ const defaultDependencies: GetDependencies = {
   getSecret,
   setSecret,
   checkOpCli,
+  itemExists,
   prompt: inquirer.prompt,
   applyColorConfig,
   createSpinner,
@@ -58,6 +60,11 @@ export function createGetCommand(
     options: GetOptions
   ): Promise<void> {
     try {
+      // Validate name is not empty
+      if (!name || name.trim().length === 0) {
+        throw new OpError('Secret name cannot be empty.', 2);
+      }
+
       deps.checkOpCli();
 
       if (options.json && (options.plain || options.silent)) {
@@ -105,6 +112,17 @@ export function createGetCommand(
         }
         console.log(chalk.white(secret));
         return;
+      }
+
+      // Determine if item exists but field is wrong, or item doesn't exist at all
+      const exists = deps.itemExists(name, vault);
+
+      if (exists) {
+        // Item exists but field not found
+        if (!quietSpinner) {
+          spinner.fail(chalk.yellow(`Field "${field}" not found on item "${name}" in vault "${vault}"`));
+        }
+        throw new OpError(`Field "${field}" not found. Check available fields with: op item get "${name}" --vault="${vault}"`, 1);
       }
 
       if (!quietSpinner) {
