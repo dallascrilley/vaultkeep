@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -29,6 +29,24 @@ function getOpEnv(): NodeJS.ProcessEnv {
   }
   
   return env;
+}
+
+function formatOpErrorMessage(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return '';
+  }
+
+  const maybeError = error as { stderr?: Buffer | string; message?: string };
+  const stderr = maybeError.stderr ? String(maybeError.stderr).trim() : '';
+  if (stderr.length > 0) {
+    return stderr.split('\n')[0];
+  }
+
+  if (maybeError.message) {
+    return String(maybeError.message).trim();
+  }
+
+  return '';
 }
 
 /**
@@ -158,6 +176,49 @@ export function getItem(title: string, vault: string = 'Private'): OpItem | null
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolve a 1Password share link into an item payload.
+ */
+export function getItemFromShareLink(shareLink: string): OpItem {
+  const env = getOpEnv();
+  let lastError = '';
+  let shareLinkUnsupported = false;
+
+  const attempts: string[][] = [
+    ['item', 'get', '--share-link', shareLink, '--format=json'],
+    ['item', 'get', shareLink, '--format=json'],
+  ];
+
+  for (const args of attempts) {
+    try {
+      const output = execFileSync('op', args, {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        env,
+      });
+      return JSON.parse(output);
+    } catch (error: unknown) {
+      const message = formatOpErrorMessage(error);
+      if (message.includes('--share-link') && message.includes('unknown')) {
+        shareLinkUnsupported = true;
+      }
+      if (message) {
+        lastError = message;
+      }
+    }
+  }
+
+  if (shareLinkUnsupported) {
+    throw new OpError(
+      'Share links are not supported by this op CLI version. Update op and try again.',
+      1
+    );
+  }
+
+  const suffix = lastError ? `: ${lastError}` : '';
+  throw new OpError(`Failed to resolve share link${suffix}`, 1);
 }
 
 /**

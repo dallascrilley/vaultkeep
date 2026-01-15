@@ -109,6 +109,16 @@ ops export --format json --output secrets.json
 ops export --vault Work --output work.env
 ```
 
+### Resolve a share link
+
+```bash
+# Resolve a 1Password share link to an op:// reference
+ops resolve "https://share.1password.com/s#..."
+
+# JSON output for scripting
+ops resolve "https://share.1password.com/s#..." --json
+```
+
 ## Integration with AGENTS.md Pattern
 
 This tool follows the pattern in §13 of AGENTS.md:
@@ -169,6 +179,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `search <query>` | Search items by title | `-v, --vault`, `-j, --json` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
+| `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
 
 ## Development
 
