@@ -149,6 +149,15 @@ ops export --format json | jq -r 'to_entries[] | "\(.key)=\(.value)"'
 ops export --format json --output secrets.json
 ```
 
+### Import from .env
+```bash
+# Import secrets from a local env file
+ops import .env
+
+# Import into a specific vault
+ops import .env --vault Work
+```
+
 ### Batch create secrets
 ```bash
 # Create multiple secrets
