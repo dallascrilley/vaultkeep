@@ -54,6 +54,11 @@ export TOKEN=$(ops get GITHUB_TOKEN --silent)
 echo $TOKEN  # Just the value, no UI
 ```
 
+### 5. Resolve a share link
+```bash
+ops resolve "https://share.1password.com/s#..."
+```
+
 ## Common Workflows
 
 ### Setup a new project
@@ -61,13 +66,31 @@ echo $TOKEN  # Just the value, no UI
 # Clone repo
 git clone https://github.com/user/project.git
 cd project
-
 # Generate .env from 1Password
 ops export --output .env
-
 # Start development
 npm install
 npm run dev
+```
+
+### Import a .env file into 1Password
+```bash
+# Import local env file
+ops import .env
+
+# Import into a specific vault
+ops import .env --vault Work
+```
+
+### Run a command with secrets injected
+```bash
+# Create a mapping file
+cat <<EOF > .env.ops
+API_KEY=MY_API_KEY_SECRET
+EOF
+
+# Run a command with the injected env
+ops run -- node app.js
 ```
 
 ### Store multiple secrets
