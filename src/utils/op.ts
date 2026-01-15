@@ -66,6 +66,36 @@ function isServiceAccountRestriction(message: string): boolean {
   );
 }
 
+/**
+ * Get the default field name based on item category
+ */
+export function getDefaultFieldForCategory(category: string): string {
+  const categoryDefaults: Record<string, string> = {
+    API_CREDENTIAL: 'credential',
+    LOGIN: 'password',
+    PASSWORD: 'password',
+    DATABASE: 'password',
+    SERVER: 'password',
+    SECURE_NOTE: 'notesPlain',
+  };
+  return categoryDefaults[category] || 'password';
+}
+
+/**
+ * Check if an item name contains characters that break op:// references
+ */
+function hasSpecialChars(name: string): boolean {
+  return name.includes('/') || name.includes('\\');
+}
+
+/**
+ * Get item ID for names with special characters
+ */
+export function getItemId(title: string, vault: string = 'Private'): string | null {
+  const item = getItem(title, vault);
+  return item?.id ?? null;
+}
+
 interface ShareLinkResolverDeps {
   execFileSync: typeof execFileSync;
   getServiceAccountEnv: () => NodeJS.ProcessEnv;
@@ -253,8 +283,17 @@ export function getSecret(
       return output.trim();
     }
 
-    // Otherwise, construct reference
-    const opReference = `op://${vault}/${reference}/${field}`;
+    // If name has special chars (like /), use item ID instead
+    let itemRef = reference;
+    if (hasSpecialChars(reference)) {
+      const itemId = getItemId(reference, vault);
+      if (itemId) {
+        itemRef = itemId;
+      }
+    }
+
+    // Construct reference
+    const opReference = `op://${vault}/${itemRef}/${field}`;
     const output = execSync(`op read "${opReference}" 2>/dev/null`, {
       encoding: 'utf-8',
       stdio: 'pipe',
