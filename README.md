@@ -119,6 +119,24 @@ ops import .env
 ops import .env --vault Work
 ```
 
+### Run a command with injected secrets
+
+Create a `.env.ops` file that maps environment variables to secret names:
+
+```
+API_KEY=MY_API_KEY_SECRET
+DB_PASSWORD=MY_DB_PASSWORD
+```
+
+Then run:
+
+```bash
+ops run -- node app.js
+
+# Or inline mappings
+ops run --env API_KEY=MY_API_KEY_SECRET -- node app.js
+```
+
 ### Resolve a share link
 
 ```bash
@@ -192,6 +210,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
 | `import <file>` | Import secrets from .env | `-v, --vault` |
+| `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file` |
 | `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
 
 ## Development
