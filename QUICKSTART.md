@@ -70,6 +70,15 @@ npm install
 npm run dev
 ```
 
+### Import a .env file into 1Password
+```bash
+# Import local env file
+ops import .env
+
+# Import into a specific vault
+ops import .env --vault Work
+```
+
 ### Store multiple secrets
 ```bash
 ops set OPENAI_API_KEY

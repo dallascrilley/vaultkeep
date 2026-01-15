@@ -109,6 +109,16 @@ ops export --format json --output secrets.json
 ops export --vault Work --output work.env
 ```
 
+### Import secrets
+
+```bash
+# Import from a .env file (KEY=VALUE per line)
+ops import .env
+
+# Import into a specific vault
+ops import .env --vault Work
+```
+
 ## Integration with AGENTS.md Pattern
 
 This tool follows the pattern in §13 of AGENTS.md:
@@ -169,6 +179,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `search <query>` | Search items by title | `-v, --vault`, `-j, --json` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
+| `import <file>` | Import secrets from .env | `-v, --vault` |
 
 ## Development
 
