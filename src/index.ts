@@ -8,6 +8,7 @@ import { copyCommand } from './commands/copy.js';
 import { importCommand } from './commands/import.js';
 import { resolveCommand } from './commands/resolve.js';
 import { runCommand } from './commands/run.js';
+import { inspectCommand } from './commands/inspect.js';
 
 const program = new Command();
 
@@ -37,6 +38,15 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(getCommand);
+
+program
+  .command('inspect <name>')
+  .description('Inspect an item to see available fields')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-j, --json', 'output as JSON')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
+  .action(inspectCommand);
 
 program
   .command('set <name>')
