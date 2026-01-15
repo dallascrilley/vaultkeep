@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli, itemExists } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists, getItemFields } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -27,6 +27,7 @@ export interface GetDependencies {
   setSecret: typeof setSecret;
   checkOpCli: typeof checkOpCli;
   itemExists: typeof itemExists;
+  getItemFields: typeof getItemFields;
   prompt: typeof inquirer.prompt;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -41,6 +42,7 @@ const defaultDependencies: GetDependencies = {
   setSecret,
   checkOpCli,
   itemExists,
+  getItemFields,
   prompt: inquirer.prompt,
   applyColorConfig,
   createSpinner,
@@ -118,11 +120,20 @@ export function createGetCommand(
       const exists = deps.itemExists(name, vault);
 
       if (exists) {
-        // Item exists but field not found
+        // Item exists but field not found - suggest available fields
+        const fields = deps.getItemFields(name, vault);
         if (!quietSpinner) {
-          spinner.fail(chalk.yellow(`Field "${field}" not found on item "${name}" in vault "${vault}"`));
+          spinner.fail(chalk.yellow(`Field "${field}" not found on item "${name}"`));
         }
-        throw new OpError(`Field "${field}" not found. Check available fields with: op item get "${name}" --vault="${vault}"`, 1);
+
+        let errorMessage = `Field "${field}" not found.`;
+        if (fields.length > 0) {
+          errorMessage += ` Available fields: ${fields.join(', ')}`;
+          errorMessage += `\nTry: ops get "${name}" --field ${fields[0]}`;
+        } else {
+          errorMessage += ` Use: ops inspect "${name}" to see available fields.`;
+        }
+        throw new OpError(errorMessage, 1);
       }
 
       if (!quietSpinner) {
