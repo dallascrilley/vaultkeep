@@ -109,6 +109,24 @@ ops export --format json --output secrets.json
 ops export --vault Work --output work.env
 ```
 
+### Run a command with injected secrets
+
+Create a `.env.ops` file that maps environment variables to secret names:
+
+```
+API_KEY=MY_API_KEY_SECRET
+DB_PASSWORD=MY_DB_PASSWORD
+```
+
+Then run:
+
+```bash
+ops run -- node app.js
+
+# Or inline mappings
+ops run --env API_KEY=MY_API_KEY_SECRET -- node app.js
+```
+
 ## Integration with AGENTS.md Pattern
 
 This tool follows the pattern in §13 of AGENTS.md:
@@ -169,6 +187,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `search <query>` | Search items by title | `-v, --vault`, `-j, --json` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json` |
 | `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-o, --output` |
+| `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file` |
 
 ## Development
 
