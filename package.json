@@ -13,6 +13,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dallascrilley/op-cli-helper.git"
+  },
   "scripts": {
     "build:bin": "bun build --compile src/index.ts --outfile bin/ops",
     "build": "tsc",
@@ -20,7 +24,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "release": "semantic-release --dry-run",
+    "release:ci": "semantic-release"
   },
   "keywords": [
     "1password",
@@ -40,9 +46,12 @@
     "ora": "^7.0.1"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "@types/cross-spawn": "^6.0.2",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.10.6",
+    "semantic-release": "^25.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
