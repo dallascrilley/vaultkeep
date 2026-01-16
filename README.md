@@ -1,10 +1,13 @@
 # ops - 1Password CLI Helper
 
+[![npm version](https://img.shields.io/npm/v/dc-ops-cli.svg)](https://www.npmjs.com/package/dc-ops-cli)
+
 Easy secret retrieval from 1Password with smart fallbacks and interactive prompts.
 
 ## Features
 
 - 🔐 **Smart retrieval** - Get secrets with automatic fallback prompts
+- 🧠 **Smart field detection** - Auto-detects the right field based on item type (API keys use `credential`, logins use `password`)
 - 📝 **Interactive prompts** - Create secrets on-the-fly if not found
 - 📋 **List & search** - Browse your vault items
 - ⭐ **Favorites** - Quick access to your most-used secrets
@@ -18,15 +21,13 @@ Easy secret retrieval from 1Password with smart fallbacks and interactive prompt
 ## Installation
 
 ```bash
-# Install dependencies
+# Install from npm
+npm install -g dc-ops-cli
+
+# Or install from source
+git clone https://github.com/dallascrilley/op-cli-helper.git
 cd op-cli-helper
-npm install
-
-# Build
-npm run build
-
-# Link globally for development
-npm link
+npm install && npm run build && npm link
 ```
 
 ## Prerequisites
@@ -39,11 +40,19 @@ npm link
 ### Get a secret
 
 ```bash
-# Get a secret (prompts to create if not found)
+# Get a secret (auto-detects field based on item type)
 ops get GITHUB_TOKEN
 
-# Specify vault and field
+# Smart field detection:
+# - API_CREDENTIAL items → uses 'credential' field
+# - LOGIN items → uses 'password' field
+# - SECURE_NOTE items → uses 'notesPlain' field
+
+# Specify vault and field explicitly
 ops get GITHUB_TOKEN --vault Personal --field api-key
+
+# Works with special characters in item names
+ops get "NPM_TOKEN - dallasdotjs / gh_actions_publish"
 
 # Plain output (for piping)
 export TOKEN=$(ops get GITHUB_TOKEN --plain)
@@ -221,6 +230,27 @@ Did you mean: GitHub PAT, GitLab PAT
 ```
 
 The clipboard `copy` command also confirms when it clears the clipboard after the TTL expires.
+
+## Contributing
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) with [semantic-release](https://semantic-release.gitbook.io/) for automated versioning:
+
+```bash
+# Bug fixes → patch release (1.0.1)
+git commit -m "fix: handle empty secrets correctly"
+
+# New features → minor release (1.1.0)
+git commit -m "feat: add vault search command"
+
+# Breaking changes → major release (2.0.0)
+git commit -m "feat!: redesign API"
+# or
+git commit -m "feat: new feature
+
+BREAKING CHANGE: description of breaking change"
+```
+
+Just push to `master` - releases happen automatically!
 
 ## Integration with AGENTS.md Pattern
 
