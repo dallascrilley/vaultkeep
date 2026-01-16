@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/dallascrilley/op-cli-helper/compare/v1.1.1...v1.1.2) (2026-01-16)
+
+
+### Bug Fixes
+
+* **cli:** read version dynamically from package.json ([39ae7f6](https://github.com/dallascrilley/op-cli-helper/commit/39ae7f6d08a6f8abc57e07a260c6b81bcd0d279a))
+
 ## [1.1.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.1.0...v1.1.1) (2026-01-16)
 
 
