@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { createRequire } from 'module';
 import { getCommand } from './commands/get.js';
 import { listCommand } from './commands/list.js';
 import { setCommand } from './commands/set.js';
@@ -11,12 +12,16 @@ import { runCommand } from './commands/run.js';
 import { inspectCommand } from './commands/inspect.js';
 import { vaultsCommand } from './commands/vaults.js';
 
+// Dynamic version from package.json
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json');
+
 const program = new Command();
 
 program
   .name('ops')
   .description('Easy secret retrieval from 1Password with smart fallbacks')
-  .version('1.0.0')
+  .version(pkg.version)
   .addHelpCommand()
   .showHelpAfterError()
   .showSuggestionAfterError()
