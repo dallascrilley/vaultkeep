@@ -17,6 +17,7 @@ Easy secret retrieval from 1Password with smart fallbacks and interactive prompt
 - 💡 **Smart suggestions** - Get hints when secrets or fields aren't found
 - 🎨 **Beautiful UI** - Colored output and progress indicators
 - 🔒 **Secure** - Never exposes secrets in logs or chat
+- ⌨️ **Shell completion** - Tab completion for bash, zsh, and fish
 
 ## Installation
 
@@ -212,6 +213,33 @@ ops vaults
 ops vaults --json
 ```
 
+### Shell Completion
+
+Generate shell completion scripts for bash, zsh, or fish:
+
+```bash
+# Bash - add to ~/.bashrc
+source <(ops completion bash)
+
+# Or append permanently
+ops completion bash >> ~/.bashrc
+
+# Zsh - add to ~/.zshrc
+source <(ops completion zsh)
+
+# Or save to completions directory
+ops completion zsh > ~/.zsh/completions/_ops
+
+# Fish - save to completions directory
+ops completion fish > ~/.config/fish/completions/ops.fish
+```
+
+Features:
+- Tab completion for all commands and options
+- Dynamic vault name completion (from 1Password)
+- Dynamic item name completion (from 1Password)
+- Field name suggestions
+
 ### Smart suggestions
 
 When a secret or field isn't found, ops provides helpful suggestions:
@@ -353,6 +381,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
 | `inspect <name>` | Show available fields for a secret | `-v, --vault`, `-j, --json` |
 | `vaults` | List available vaults | `-j, --json` |
+| `completion [shell]` | Generate shell completion script | Shells: `bash`, `zsh`, `fish` |
 
 ## Development
 
