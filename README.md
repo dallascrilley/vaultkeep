@@ -233,24 +233,59 @@ The clipboard `copy` command also confirms when it clears the clipboard after th
 
 ## Contributing
 
-We use [Conventional Commits](https://www.conventionalcommits.org/) with [semantic-release](https://semantic-release.gitbook.io/) for automated versioning:
+We use [Conventional Commits](https://www.conventionalcommits.org/) with [semantic-release](https://semantic-release.gitbook.io/) for automated versioning.
+
+### Commit Convention
+
+| Type | Release | Example |
+|------|---------|---------|
+| `fix:` | Patch (1.0.x) | `fix: handle empty secrets correctly` |
+| `feat:` | Minor (1.x.0) | `feat: add vault search command` |
+| `feat!:` | Major (x.0.0) | `feat!: redesign API` |
+| `docs:` | None | `docs: update README` |
+| `chore:` | None | `chore: update dependencies` |
+| `refactor:` | None | `refactor: simplify error handling` |
+| `test:` | None | `test: add get command tests` |
+
+### Release Process
+
+**Fully automated** - just follow these steps:
 
 ```bash
-# Bug fixes → patch release (1.0.1)
-git commit -m "fix: handle empty secrets correctly"
+# 1. Run quality gates (required before pushing)
+npm run typecheck && npm run build && npm test
 
-# New features → minor release (1.1.0)
-git commit -m "feat: add vault search command"
+# 2. Commit with conventional format
+git add .
+git commit -m "feat: your new feature"
 
-# Breaking changes → major release (2.0.0)
-git commit -m "feat!: redesign API"
-# or
-git commit -m "feat: new feature
-
-BREAKING CHANGE: description of breaking change"
+# 3. Push to master - CI handles everything
+git push origin master
 ```
 
-Just push to `master` - releases happen automatically!
+**What happens automatically:**
+1. CI runs typecheck, build, and tests
+2. semantic-release analyzes your commits
+3. Version is bumped in package.json
+4. CHANGELOG.md is updated
+5. GitHub release is created
+6. Package is published to npm
+
+**Do NOT manually:**
+- Edit version in package.json
+- Edit CHANGELOG.md
+- Create GitHub releases
+- Publish to npm
+
+### Quality Gates
+
+All must pass before pushing:
+
+```bash
+npm run typecheck    # TypeScript type checking
+npm run build        # Compile to dist/
+npm test             # Run all tests
+```
 
 ## Integration with AGENTS.md Pattern
 
