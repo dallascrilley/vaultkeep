@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.4.1...v1.5.0) (2026-01-17)
+
+
+### Features
+
+* **retry:** add retry logic with exponential backoff ([57a4a00](https://github.com/dallascrilley/op-cli-helper/commit/57a4a00054b3eb350461f878cb84b978e5db117d)), closes [#14](https://github.com/dallascrilley/op-cli-helper/issues/14)
+
 ## [1.4.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.4.0...v1.4.1) (2026-01-17)
 
 
