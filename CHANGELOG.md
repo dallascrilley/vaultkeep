@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/dallascrilley/op-cli-helper/compare/v1.1.2...v1.1.3) (2026-01-17)
+
+
+### Bug Fixes
+
+* repair dev mode and dependency installation ([4695de0](https://github.com/dallascrilley/op-cli-helper/commit/4695de0a46b827ae557902deb02ffdf4a029a6f7))
+
 ## [1.1.2](https://github.com/dallascrilley/op-cli-helper/compare/v1.1.1...v1.1.2) (2026-01-16)
 
 
