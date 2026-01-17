@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import { OpError } from './types.js';
+import { loadConfig } from './config.js';
 
 const TRUE_VALUES = new Set(['1', 'true', 'yes', 'on']);
 
@@ -15,11 +16,13 @@ export function resolveBooleanOption(
 }
 
 export function resolveVault(value?: string): string {
-  return value || process.env.OPS_VAULT || 'Private';
+  const config = loadConfig();
+  return value || process.env.OPS_VAULT || config.vault || 'Private';
 }
 
 export function resolveField(value?: string): string {
-  return value || process.env.OPS_FIELD || 'password';
+  const config = loadConfig();
+  return value || process.env.OPS_FIELD || config.field || 'password';
 }
 
 export function resolveFormat(value?: string): 'env' | 'json' {
