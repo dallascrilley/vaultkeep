@@ -12,6 +12,7 @@ import { runCommand } from './commands/run.js';
 import { inspectCommand } from './commands/inspect.js';
 import { vaultsCommand } from './commands/vaults.js';
 import { completionCommand } from './commands/completion.js';
+import { getManyCommand } from './commands/get-many.js';
 import { setRetryOptions } from './utils/op.js';
 import { isRetryDisabled } from './utils/retry.js';
 
@@ -65,6 +66,20 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(getCommand);
+
+program
+  .command('get-many <names...>')
+  .description('Get multiple secrets at once')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
+  .option('-j, --json', 'output as JSON object')
+  .option('-e, --env', 'output as KEY="value" pairs')
+  .option('--plain', 'output values only (one per line)')
+  .option('--parallel <count>', 'max concurrent requests (default: 5)', (v) => parseInt(v, 10))
+  .option('--continue-on-error', 'continue if some secrets fail')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
+  .action(getManyCommand);
 
 program
   .command('inspect <name>')
