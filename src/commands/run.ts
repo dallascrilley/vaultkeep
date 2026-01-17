@@ -1,7 +1,5 @@
-import { readFileSync, existsSync } from 'fs';
 import chalk from 'chalk';
 import spawn from 'cross-spawn';
-import dotenv from 'dotenv';
 import { checkOpCli, getSecret } from '../utils/op.js';
 import {
   applyColorConfig,
@@ -10,6 +8,8 @@ import {
   resolveVault,
 } from '../utils/cli.js';
 import { OpError } from '../utils/types.js';
+import { loadEnvMappingFile } from '../utils/env-mapping.js';
+import { loadConfig, OpsConfig } from '../utils/config.js';
 
 export interface RunOptions {
   vault?: string;
@@ -18,6 +18,7 @@ export interface RunOptions {
   envFile?: string;
   color?: boolean;
   verbose?: boolean;
+  parallel?: number;
 }
 
 export interface ProcessLike {
@@ -30,14 +31,14 @@ export interface ProcessLike {
 export interface RunDependencies {
   getSecret: typeof getSecret;
   checkOpCli: typeof checkOpCli;
-  readFileSync: typeof readFileSync;
-  existsSync: typeof existsSync;
-  parseEnv: (content: string) => Record<string, string>;
+  loadEnvMappingFile: typeof loadEnvMappingFile;
   spawn: typeof spawn;
   process: ProcessLike;
+  loadConfig: () => OpsConfig;
 }
 
 const DEFAULT_ENV_FILE = '.env.ops';
+const DEFAULT_PARALLELISM = 5;
 
 function parseEnvPairs(pairs: string[] | undefined): Record<string, string> {
   if (!pairs || pairs.length === 0) return {};
@@ -69,32 +70,68 @@ function parseEnvPairs(pairs: string[] | undefined): Record<string, string> {
   return mapping;
 }
 
-function loadEnvFile(
-  path: string,
-  deps: RunDependencies
-): Record<string, string> {
-  if (!deps.existsSync(path)) {
-    return {};
+function resolveParallelism(
+  optionValue: number | undefined,
+  config: OpsConfig
+): number {
+  if (typeof optionValue === 'number' && optionValue > 0) return optionValue;
+
+  const envValue = process.env.OPS_PARALLEL;
+  if (envValue) {
+    const parsed = Number.parseInt(envValue, 10);
+    if (!Number.isNaN(parsed) && parsed > 0) return parsed;
   }
 
-  const content = deps.readFileSync(path, 'utf-8');
-  try {
-    return deps.parseEnv(content);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Unable to parse env file.';
-    throw new OpError(`Failed to parse "${path}": ${message}`, 2);
+  if (typeof config.parallel === 'number' && config.parallel > 0) {
+    return config.parallel;
   }
+
+  return DEFAULT_PARALLELISM;
+}
+
+async function resolveSecrets(
+  mapping: Record<string, string>,
+  vault: string,
+  field: string,
+  parallelism: number,
+  deps: RunDependencies
+): Promise<Array<readonly [string, string]>> {
+  const entries = Object.entries(mapping);
+  const results: Array<readonly [string, string]> = [];
+  const chunks: Array<Array<[string, string]>> = [];
+
+  for (let i = 0; i < entries.length; i += parallelism) {
+    chunks.push(entries.slice(i, i + parallelism) as Array<[string, string]>);
+  }
+
+  for (const chunk of chunks) {
+    const chunkResults = await Promise.all(
+      chunk.map(async ([key, reference]) => {
+        const secret = await Promise.resolve(
+          deps.getSecret(reference, vault, field)
+        );
+        if (secret === null) {
+          throw new OpError(
+            `Secret "${reference}" not found in vault "${vault}"`,
+            1
+          );
+        }
+        return [key, secret] as const;
+      })
+    );
+    results.push(...chunkResults);
+  }
+
+  return results;
 }
 
 const defaultDependencies: RunDependencies = {
   getSecret,
   checkOpCli,
-  readFileSync,
-  existsSync,
-  parseEnv: (content: string) => dotenv.parse(content),
+  loadEnvMappingFile,
   spawn,
   process,
+  loadConfig,
 };
 
 export function createRunCommand(
@@ -117,11 +154,13 @@ export function createRunCommand(
         throw new OpError('Command required. Usage: ops run -- <command>', 2);
       }
 
+      const config = deps.loadConfig();
       const vault = resolveVault(options.vault);
       const field = resolveField(options.field);
+      const parallelism = resolveParallelism(options.parallel, config);
 
-      const envFile = options.envFile || DEFAULT_ENV_FILE;
-      const fileMapping = loadEnvFile(envFile, deps);
+      const envFile = options.envFile || config.envFile || DEFAULT_ENV_FILE;
+      const fileMapping = deps.loadEnvMappingFile(envFile);
       const flagMapping = parseEnvPairs(options.env);
       const mapping = { ...fileMapping, ...flagMapping };
 
@@ -132,19 +171,12 @@ export function createRunCommand(
         );
       }
 
-      const resolvedEntries = await Promise.all(
-        Object.entries(mapping).map(async ([key, reference]) => {
-          const secret = await Promise.resolve(
-            deps.getSecret(reference, vault, field)
-          );
-          if (secret === null) {
-            throw new OpError(
-              `Secret "${reference}" not found in vault "${vault}"`,
-              1
-            );
-          }
-          return [key, secret] as const;
-        })
+      const resolvedEntries = await resolveSecrets(
+        mapping,
+        vault,
+        field,
+        parallelism,
+        deps
       );
 
       if (options.verbose) {
