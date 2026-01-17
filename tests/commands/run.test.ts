@@ -32,6 +32,8 @@ test('loads secrets from env file and injects into command env', async () => {
     checkOpCli: () => {},
     getSecret: (reference: string) =>
       reference === 'MY_SECRET' ? 'secret-value' : null,
+    getSecretAsync: async (reference: string) =>
+      reference === 'MY_SECRET' ? 'secret-value' : null,
     loadEnvMappingFile: () => ({ API_KEY: 'MY_SECRET' }),
     spawn: ((cmd: string, args: string[], options: any) => {
       spawnCalls.push({ cmd, args, options });
@@ -59,6 +61,8 @@ test('uses --env overrides when provided', async () => {
   const runCommand = createRunCommand({
     checkOpCli: () => {},
     getSecret: (reference: string) =>
+      reference === 'OVERRIDE' ? 'override-value' : null,
+    getSecretAsync: async (reference: string) =>
       reference === 'OVERRIDE' ? 'override-value' : null,
     loadEnvMappingFile: () => ({}),
     spawn: ((cmd: string, args: string[], options: any) => {
@@ -88,6 +92,7 @@ test('exits with OpError when env file parsing fails', async () => {
   const runCommand = createRunCommand({
     checkOpCli: () => {},
     getSecret: () => 'value',
+    getSecretAsync: async () => 'value',
     loadEnvMappingFile: () => {
       throw new OpError('Failed to parse \"custom.env.ops\": Parse failure', 2);
     },
@@ -117,6 +122,11 @@ test('--verbose flag logs injected variable names without exposing values', asyn
   const runCommand = createRunCommand({
     checkOpCli: () => {},
     getSecret: (reference: string) => {
+      if (reference === 'SECRET_A') return 'actual-secret-value-a';
+      if (reference === 'SECRET_B') return 'actual-secret-value-b';
+      return null;
+    },
+    getSecretAsync: async (reference: string) => {
       if (reference === 'SECRET_A') return 'actual-secret-value-a';
       if (reference === 'SECRET_B') return 'actual-secret-value-b';
       return null;
@@ -159,6 +169,8 @@ test('uses config envFile when --env-file is not provided', async () => {
   const runCommand = createRunCommand({
     checkOpCli: () => {},
     getSecret: (reference: string) =>
+      reference === 'CONFIG_SECRET' ? 'config-value' : null,
+    getSecretAsync: async (reference: string) =>
       reference === 'CONFIG_SECRET' ? 'config-value' : null,
     loadEnvMappingFile: (path: string) => {
       assert.equal(path, 'custom.env.ops');

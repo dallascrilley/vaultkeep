@@ -105,7 +105,8 @@ export function createCopyCommand(
         );
       }
 
-      setTimeout(async () => {
+      // Helper to clear clipboard if it still contains the secret
+      const clearClipboard = async () => {
         try {
           const current = await deps.clipboardRead();
           if (current === secret) {
@@ -117,7 +118,26 @@ export function createCopyCommand(
         } catch {
           // Best-effort clipboard cleanup.
         }
+      };
+
+      // Register signal handlers to clear clipboard on interrupt
+      const handleSignal = async () => {
+        await clearClipboard();
+        process.exit(0);
+      };
+
+      process.once('SIGINT', handleSignal);
+      process.once('SIGTERM', handleSignal);
+
+      // Schedule automatic cleanup after TTL
+      const timeoutId = setTimeout(async () => {
+        process.off('SIGINT', handleSignal);
+        process.off('SIGTERM', handleSignal);
+        await clearClipboard();
       }, ttlSeconds * 1000);
+
+      // Prevent timeout from keeping process alive if it's the only thing left
+      timeoutId.unref();
     } catch (error) {
       if (error instanceof OpError) {
         console.error(chalk.red(`Error: ${error.message}`));

@@ -1,8 +1,10 @@
 import chalk from 'chalk';
 import {
   getSecret,
+  getSecretAsync,
   checkOpCli,
   getItem,
+  getItemAsync,
   getDefaultFieldForCategory,
 } from '../utils/op.js';
 import {
@@ -28,8 +30,10 @@ export interface GetManyOptions {
 
 export interface GetManyDependencies {
   getSecret: typeof getSecret;
+  getSecretAsync: typeof getSecretAsync;
   checkOpCli: typeof checkOpCli;
   getItem: typeof getItem;
+  getItemAsync: typeof getItemAsync;
   getDefaultFieldForCategory: typeof getDefaultFieldForCategory;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -40,8 +44,10 @@ export interface GetManyDependencies {
 
 const defaultDependencies: GetManyDependencies = {
   getSecret,
+  getSecretAsync,
   checkOpCli,
   getItem,
+  getItemAsync,
   getDefaultFieldForCategory,
   applyColorConfig,
   createSpinner,
@@ -57,23 +63,23 @@ interface SecretResult {
 }
 
 /**
- * Fetch a single secret with smart field detection
+ * Fetch a single secret with smart field detection (async for true parallelism)
  */
-function fetchSecret(
+async function fetchSecretAsync(
   name: string,
   vault: string,
   defaultField: string,
   deps: GetManyDependencies
-): SecretResult {
+): Promise<SecretResult> {
   try {
     // Smart field detection: check item category
     let field = defaultField;
-    const item = deps.getItem(name, vault);
+    const item = await deps.getItemAsync(name, vault);
     if (item?.category) {
       field = deps.getDefaultFieldForCategory(item.category);
     }
 
-    const value = deps.getSecret(name, vault, field);
+    const value = await deps.getSecretAsync(name, vault, field);
     return { name, value };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -82,7 +88,7 @@ function fetchSecret(
 }
 
 /**
- * Fetch multiple secrets in parallel with concurrency limit
+ * Fetch multiple secrets in parallel with concurrency limit (true async parallelism)
  */
 async function fetchSecretsParallel(
   names: string[],
@@ -100,10 +106,9 @@ async function fetchSecretsParallel(
   }
 
   for (const chunk of chunks) {
+    // True parallel execution - each call runs concurrently
     const chunkResults = await Promise.all(
-      chunk.map((name) =>
-        Promise.resolve(fetchSecret(name, vault, field, deps))
-      )
+      chunk.map((name) => fetchSecretAsync(name, vault, field, deps))
     );
     results.push(...chunkResults);
   }
