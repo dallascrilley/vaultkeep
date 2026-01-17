@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.9.0...v1.9.1) (2026-01-17)
+
+
+### Bug Fixes
+
+* address security and performance audit findings ([e8357cb](https://github.com/dallascrilley/op-cli-helper/commit/e8357cb46ef6b0ab5526b297681ea8f85e6c7075))
+
 # [1.9.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.8.0...v1.9.0) (2026-01-17)
 
 
