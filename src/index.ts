@@ -15,6 +15,7 @@ import { completionCommand } from './commands/completion.js';
 import { getManyCommand } from './commands/get-many.js';
 import { setRetryOptions } from './utils/op.js';
 import { isRetryDisabled } from './utils/retry.js';
+import { loadSessionCacheIntoEnv, persistSessionCacheFromEnv } from './utils/session-cache.js';
 
 // Dynamic version from package.json
 const require = createRequire(import.meta.url);
@@ -32,6 +33,7 @@ program
   .option('--retry <count>', 'max retry attempts for transient failures (default: 3, env: OPS_RETRY_COUNT)')
   .option('--no-retry', 'disable retry logic (env: OPS_NO_RETRY=1)')
   .hook('preAction', (thisCommand) => {
+    loadSessionCacheIntoEnv();
     const opts = thisCommand.opts();
 
     // Configure retry options based on CLI flags
@@ -46,6 +48,9 @@ program
       }
     }
     // Otherwise use defaults from environment or built-in defaults
+  })
+  .hook('postAction', () => {
+    persistSessionCacheFromEnv();
   })
   .action(() => {
     // Show help when no command is provided (exit 0, not 1)
@@ -118,6 +123,7 @@ program
     []
   )
   .option('--env-file <file>', 'env mapping file (default: .env.ops)')
+  .option('--parallel <count>', 'max concurrent secret lookups (default: 5)', (v) => parseInt(v, 10))
   .option('--verbose', 'show which secrets are being injected')
   .option('--no-color', 'disable color output')
   .action(runCommand);
