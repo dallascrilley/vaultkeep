@@ -15,7 +15,7 @@ _ops_completion() {
     cur="\${COMP_WORDS[COMP_CWORD]}"
     prev="\${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="get set copy list search favorites vaults inspect export import resolve run completion"
+    commands="get set copy list search favorites vaults inspect export import resolve run interactive completion"
 
     case "\${COMP_CWORD}" in
         1)
@@ -92,7 +92,10 @@ _ops_completion() {
                             opts="-j --json -q --quiet --no-color"
                             ;;
                         run)
-                            opts="-v --vault -f --field -e --env --env-file --verbose --no-color"
+                            opts="-v --vault -f --field -e --env --env-file --parallel --verbose --no-color"
+                            ;;
+                        interactive)
+                            opts="-v --vault -f --field --no-color"
                             ;;
                         completion)
                             opts="bash zsh fish"
@@ -131,6 +134,7 @@ _ops() {
         'import:Import secrets from .env file'
         'resolve:Resolve 1Password share link'
         'run:Run command with secrets injected'
+        'interactive:Interactive browsing mode'
         'completion:Generate shell completion script'
     )
 
@@ -286,7 +290,16 @@ _ops() {
                         '*-e[Map env to secret]:mapping:' \\
                         '*--env[Map env to secret]:mapping:' \\
                         '--env-file[Env mapping file]:file:_files' \\
+                        '--parallel[Max concurrent secret lookups]:count:' \\
                         '--verbose[Show injected secrets]' \\
+                        '--no-color[Disable colors]'
+                    ;;
+                interactive)
+                    _arguments \\
+                        '-v[Vault name]:vault:_ops_vaults' \\
+                        '--vault[Vault name]:vault:_ops_vaults' \\
+                        '-f[Field name]:field:(password credential username notesPlain api-key token)' \\
+                        '--field[Field name]:field:(password credential username notesPlain api-key token)' \\
                         '--no-color[Disable colors]'
                     ;;
                 completion)
@@ -338,6 +351,7 @@ complete -c ops -n __fish_use_subcommand -a export -d 'Export secrets as .env or
 complete -c ops -n __fish_use_subcommand -a import -d 'Import secrets from .env file'
 complete -c ops -n __fish_use_subcommand -a resolve -d 'Resolve 1Password share link'
 complete -c ops -n __fish_use_subcommand -a run -d 'Run command with secrets injected'
+complete -c ops -n __fish_use_subcommand -a interactive -d 'Interactive browsing mode'
 complete -c ops -n __fish_use_subcommand -a completion -d 'Generate shell completion script'
 
 # Common options
@@ -380,7 +394,11 @@ complete -c ops -n '__fish_seen_subcommand_from import' -l dry-run -d 'Preview w
 # run command options
 complete -c ops -n '__fish_seen_subcommand_from run' -l env -s e -d 'Map env to secret'
 complete -c ops -n '__fish_seen_subcommand_from run' -l env-file -r -d 'Env mapping file'
+complete -c ops -n '__fish_seen_subcommand_from run' -l parallel -d 'Max concurrent secret lookups'
 complete -c ops -n '__fish_seen_subcommand_from run' -l verbose -d 'Show injected secrets'
+
+# interactive command options
+complete -c ops -n '__fish_seen_subcommand_from interactive' -l field -s f -d 'Field name'
 
 # completion command - shell argument
 complete -c ops -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish' -d 'Shell type'
@@ -390,7 +408,7 @@ function __fish_ops_vaults
     command -v op &>/dev/null; and op vault list --format=json 2>/dev/null | jq -r '.[].name' 2>/dev/null
 end
 
-complete -c ops -n '__fish_seen_subcommand_from get set copy list search favorites inspect export import run' -l vault -s v -xa '(__fish_ops_vaults)'
+complete -c ops -n '__fish_seen_subcommand_from get set copy list search favorites inspect export import run interactive' -l vault -s v -xa '(__fish_ops_vaults)'
 
 # Dynamic item completion (if op CLI available)
 function __fish_ops_items
@@ -400,7 +418,7 @@ end
 complete -c ops -n '__fish_seen_subcommand_from get copy inspect' -xa '(__fish_ops_items)'
 
 # Field completion
-complete -c ops -n '__fish_seen_subcommand_from get set copy' -l field -s f -xa 'password credential username notesPlain api-key token'
+complete -c ops -n '__fish_seen_subcommand_from get set copy interactive' -l field -s f -xa 'password credential username notesPlain api-key token'
 `;
 
 interface CompletionOptions {
