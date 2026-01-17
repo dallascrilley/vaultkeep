@@ -11,6 +11,7 @@ import { resolveCommand } from './commands/resolve.js';
 import { runCommand } from './commands/run.js';
 import { inspectCommand } from './commands/inspect.js';
 import { vaultsCommand } from './commands/vaults.js';
+import { completionCommand } from './commands/completion.js';
 
 // Dynamic version from package.json
 const require = createRequire(import.meta.url);
@@ -177,6 +178,13 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(resolveCommand);
+
+program
+  .command('completion [shell]')
+  .description('Generate shell completion script (bash, zsh, fish)')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
+  .action(completionCommand);
 
 // Error handling
 process.on('uncaughtException', (error: Error) => {
