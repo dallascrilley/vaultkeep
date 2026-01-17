@@ -16,7 +16,16 @@ function buildGetCommand(overrides: Record<string, any> = {}) {
     itemExists: () => itemExists,
     getItemFields: () => itemFields,
     findSimilarItems: () => [],
-    getItem: () => itemCategory ? { category: itemCategory, fields: [] } : null,
+    // getItem now returns item with fields for optimized caching
+    getItem: () => {
+      if (itemExists) {
+        return {
+          category: itemCategory || 'LOGIN',
+          fields: itemFields.map(label => ({ label, value: 'mock-value' })),
+        };
+      }
+      return null;
+    },
     getDefaultFieldForCategory: (cat: string) => {
       const defaults: Record<string, string> = {
         API_CREDENTIAL: 'credential',
@@ -98,8 +107,16 @@ test('uses password field for LOGIN items', async () => {
 test('respects explicit --field option over smart detection', async () => {
   itemCategory = 'API_CREDENTIAL';
   let usedField: string | null = null;
-  
+
   const getCommand = buildGetCommand({
+    // Cached item doesn't include 'token' field, forcing fallback to getSecret
+    getItem: () => ({
+      category: 'API_CREDENTIAL',
+      fields: [
+        { label: 'username', value: 'mock-value' },
+        { label: 'notes', value: 'mock-value' },
+      ],
+    }),
     getSecret: (_name: string, _vault: string, field: string) => {
       usedField = field;
       return 'my-secret';

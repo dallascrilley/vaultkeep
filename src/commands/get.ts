@@ -81,15 +81,17 @@ export function createGetCommand(
 
       const vault = deps.resolveVault(options.vault);
       
+      // Cache item data to avoid redundant CLI calls
+      // This single call is reused for field detection AND secret retrieval
+      const cachedItem = deps.getItem(name, vault);
+      
       // Smart field detection: if no field specified, try to detect from item category
       let field: string;
       if (options.field) {
         field = deps.resolveField(options.field);
       } else {
-        // Check if item exists and get its category for smart field detection
-        const item = deps.getItem(name, vault);
-        if (item?.category) {
-          field = deps.getDefaultFieldForCategory(item.category);
+        if (cachedItem?.category) {
+          field = deps.getDefaultFieldForCategory(cachedItem.category);
         } else {
           field = deps.resolveField(undefined);
         }
@@ -112,7 +114,26 @@ export function createGetCommand(
       const quietSpinner = quiet || outputMode !== 'human';
       const spinner = deps.createSpinner('Fetching secret from 1Password...', quietSpinner);
 
-      const secret = deps.getSecret(name, vault, field);
+      // Try to extract secret from cached item first (avoids second CLI call)
+      let secret: string | null = null;
+      if (cachedItem?.fields) {
+        const fieldData = cachedItem.fields.find(
+          (f) => f.label === field || f.id === field
+        );
+        if (fieldData?.value) {
+          secret = fieldData.value;
+        }
+      }
+      
+      // Fallback to getSecret only if field not found in cached item
+      if (secret === null && cachedItem) {
+        // Use cached item ID to avoid redundant getItemId call for special chars
+        const itemRef = cachedItem.id || name;
+        secret = deps.getSecret(itemRef, vault, field);
+      } else if (secret === null) {
+        // Item doesn't exist, getSecret will return null
+        secret = deps.getSecret(name, vault, field);
+      }
 
       if (secret !== null) {
         if (!quietSpinner) {
@@ -136,12 +157,12 @@ export function createGetCommand(
         return;
       }
 
-      // Determine if item exists but field is wrong, or item doesn't exist at all
-      const exists = deps.itemExists(name, vault);
-
-      if (exists) {
-        // Item exists but field not found - suggest available fields
-        const fields = deps.getItemFields(name, vault);
+      // Use cached item to determine if item exists (avoids redundant CLI call)
+      if (cachedItem) {
+        // Item exists but field not found - suggest available fields from cached data
+        const fields = cachedItem.fields
+          ?.filter((f) => f.label && f.label.length > 0)
+          .map((f) => f.label) || [];
         if (!quietSpinner) {
           spinner.fail(chalk.yellow(`Field "${field}" not found on item "${name}"`));
         }

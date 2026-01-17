@@ -1,9 +1,12 @@
-import { execFileSync, execSync } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
+import { promisify } from 'util';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { OpItem, OpError } from './types.js';
-import { withRetrySync, RetryOptions, isTransientError } from './retry.js';
+import { withRetrySync, withRetry, RetryOptions, isTransientError } from './retry.js';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * Load service account token from ~/.config/op/sa_token
@@ -236,7 +239,7 @@ export function checkOpCli(): void {
   const env = getOpEnv();
   
   try {
-    execSync('op --version', { stdio: 'pipe', env });
+    execFileSync('op', ['--version'], { stdio: 'pipe', env });
   } catch {
     throw new OpError(
       'op CLI not found. Install from: https://1password.com/downloads/command-line/',
@@ -245,7 +248,7 @@ export function checkOpCli(): void {
   }
 
   try {
-    execSync('op account list', { stdio: 'pipe', env });
+    execFileSync('op', ['account', 'list'], { stdio: 'pipe', env });
   } catch {
     throw new OpError(
       'Not signed in to 1Password. Run: op signin or opbootstrap',
@@ -263,8 +266,9 @@ export function listItems(vault: string = 'Private'): OpItem[] {
 
   try {
     return withRetrySync(() => {
-      const output = execSync(
-        `op item list --vault="${vault}" --format=json`,
+      const output = execFileSync(
+        'op',
+        ['item', 'list', '--vault', vault, '--format=json'],
         { encoding: 'utf-8', stdio: 'pipe', env }
       );
       return JSON.parse(output);
@@ -287,11 +291,11 @@ export function itemExists(
   const env = getOpEnv();
 
   try {
-    execSync(`op item get "${title}" --vault="${vault}" --format=json`, {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      env,
-    });
+    execFileSync(
+      'op',
+      ['item', 'get', title, '--vault', vault, '--format=json'],
+      { encoding: 'utf-8', stdio: 'pipe', env }
+    );
     return true;
   } catch {
     return false;
@@ -313,11 +317,11 @@ export function getSecret(
     return withRetrySync(() => {
       // Try direct reference first (op://vault/item/field)
       if (reference.startsWith('op://')) {
-        const output = execSync(`op read "${reference}"`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          env,
-        });
+        const output = execFileSync(
+          'op',
+          ['read', reference],
+          { encoding: 'utf-8', stdio: 'pipe', env }
+        );
         return output.trim();
       }
 
@@ -332,11 +336,11 @@ export function getSecret(
 
       // Construct reference
       const opReference = `op://${vault}/${itemRef}/${field}`;
-      const output = execSync(`op read "${opReference}" 2>/dev/null`, {
-        encoding: 'utf-8',
-        stdio: 'pipe',
-        env,
-      });
+      const output = execFileSync(
+        'op',
+        ['read', opReference],
+        { encoding: 'utf-8', stdio: 'pipe', env }
+      );
       return output.trim();
     }, retryOpts);
   } catch {
@@ -360,15 +364,17 @@ export function setSecret(
     const existing = getSecret(title, vault, field);
 
     if (existing) {
-      // Update existing item
-      execSync(
-        `op item edit "${title}" --vault="${vault}" "${field}=${value}"`,
+      // Update existing item using execFileSync (safe from injection)
+      execFileSync(
+        'op',
+        ['item', 'edit', title, '--vault', vault, `${field}=${value}`],
         { stdio: 'pipe', env }
       );
     } else {
-      // Create new item
-      execSync(
-        `op item create --category="password" --title="${title}" --vault="${vault}" "${field}=${value}"`,
+      // Create new item using execFileSync (safe from injection)
+      execFileSync(
+        'op',
+        ['item', 'create', '--category=password', '--title', title, '--vault', vault, `${field}=${value}`],
         { stdio: 'pipe', env }
       );
     }
@@ -439,11 +445,87 @@ export function getItem(title: string, vault: string = 'Private'): OpItem | null
 
   try {
     return withRetrySync(() => {
-      const output = execSync(
-        `op item get "${title}" --vault="${vault}" --format=json`,
+      const output = execFileSync(
+        'op',
+        ['item', 'get', title, '--vault', vault, '--format=json'],
         { encoding: 'utf-8', stdio: 'pipe', env }
       );
       return JSON.parse(output);
+    }, retryOpts);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get item details asynchronously (for true parallel execution)
+ */
+export async function getItemAsync(title: string, vault: string = 'Private'): Promise<OpItem | null> {
+  const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
+
+  try {
+    return await withRetry(async () => {
+      const { stdout } = await execFileAsync(
+        'op',
+        ['item', 'get', title, '--vault', vault, '--format=json'],
+        { encoding: 'utf-8', env }
+      );
+      return JSON.parse(stdout);
+    }, retryOpts);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get item ID asynchronously for names with special characters
+ */
+export async function getItemIdAsync(title: string, vault: string = 'Private'): Promise<string | null> {
+  const item = await getItemAsync(title, vault);
+  return item?.id ?? null;
+}
+
+/**
+ * Get a secret asynchronously (for true parallel execution)
+ */
+export async function getSecretAsync(
+  reference: string,
+  vault: string = 'Private',
+  field: string = 'password'
+): Promise<string | null> {
+  const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
+
+  try {
+    return await withRetry(async () => {
+      // Try direct reference first (op://vault/item/field)
+      if (reference.startsWith('op://')) {
+        const { stdout } = await execFileAsync(
+          'op',
+          ['read', reference],
+          { encoding: 'utf-8', env }
+        );
+        return stdout.trim();
+      }
+
+      // If name has special chars (like /), use item ID instead
+      let itemRef = reference;
+      if (hasSpecialChars(reference)) {
+        const itemId = await getItemIdAsync(reference, vault);
+        if (itemId) {
+          itemRef = itemId;
+        }
+      }
+
+      // Construct reference
+      const opReference = `op://${vault}/${itemRef}/${field}`;
+      const { stdout } = await execFileAsync(
+        'op',
+        ['read', opReference],
+        { encoding: 'utf-8', env }
+      );
+      return stdout.trim();
     }, retryOpts);
   } catch {
     return null;
@@ -480,8 +562,9 @@ export function listFavorites(vault: string = 'Private'): OpItem[] {
 
   try {
     return withRetrySync(() => {
-      const output = execSync(
-        `op item list --vault="${vault}" --favorite --format=json`,
+      const output = execFileSync(
+        'op',
+        ['item', 'list', '--vault', vault, '--favorite', '--format=json'],
         { encoding: 'utf-8', stdio: 'pipe', env }
       );
       return JSON.parse(output);
@@ -565,11 +648,11 @@ export function listVaults(): OpVault[] {
 
   try {
     return withRetrySync(() => {
-      const output = execSync('op vault list --format=json', {
-        encoding: 'utf-8',
-        stdio: 'pipe',
-        env,
-      });
+      const output = execFileSync(
+        'op',
+        ['vault', 'list', '--format=json'],
+        { encoding: 'utf-8', stdio: 'pipe', env }
+      );
       return JSON.parse(output);
     }, retryOpts);
   } catch (error: unknown) {

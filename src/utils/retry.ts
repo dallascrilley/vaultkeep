@@ -93,10 +93,21 @@ export function isTransientError(error: Error): boolean {
 }
 
 /**
- * Sleep for a specified duration
+ * Sleep for a specified duration (async)
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Synchronous sleep using Atomics.wait (avoids busy-wait CPU spin)
+ * Uses SharedArrayBuffer with Atomics for efficient blocking sleep.
+ */
+function sleepSync(ms: number): void {
+  // Atomics.wait provides a true blocking sleep without CPU spin
+  const sharedBuffer = new SharedArrayBuffer(4);
+  const sharedArray = new Int32Array(sharedBuffer);
+  Atomics.wait(sharedArray, 0, 0, ms);
 }
 
 /**
@@ -219,11 +230,8 @@ export function withRetrySync<T>(
         onRetry(attempt + 1, err, delayMs);
       }
 
-      // Blocking sleep for sync operations
-      const end = Date.now() + delayMs;
-      while (Date.now() < end) {
-        // Busy wait - acceptable for CLI
-      }
+      // Efficient blocking sleep using Atomics (no CPU spin)
+      sleepSync(delayMs);
     }
   }
 

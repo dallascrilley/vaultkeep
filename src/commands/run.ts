@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import spawn from 'cross-spawn';
-import { checkOpCli, getSecret } from '../utils/op.js';
+import { checkOpCli, getSecret, getSecretAsync } from '../utils/op.js';
 import {
   applyColorConfig,
   resolveBooleanOption,
@@ -30,6 +30,7 @@ export interface ProcessLike {
 
 export interface RunDependencies {
   getSecret: typeof getSecret;
+  getSecretAsync: typeof getSecretAsync;
   checkOpCli: typeof checkOpCli;
   loadEnvMappingFile: typeof loadEnvMappingFile;
   spawn: typeof spawn;
@@ -105,11 +106,10 @@ async function resolveSecrets(
   }
 
   for (const chunk of chunks) {
+    // True parallel execution using async getSecretAsync
     const chunkResults = await Promise.all(
       chunk.map(async ([key, reference]) => {
-        const secret = await Promise.resolve(
-          deps.getSecret(reference, vault, field)
-        );
+        const secret = await deps.getSecretAsync(reference, vault, field);
         if (secret === null) {
           throw new OpError(
             `Secret "${reference}" not found in vault "${vault}"`,
@@ -127,6 +127,7 @@ async function resolveSecrets(
 
 const defaultDependencies: RunDependencies = {
   getSecret,
+  getSecretAsync,
   checkOpCli,
   loadEnvMappingFile,
   spawn,

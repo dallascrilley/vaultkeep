@@ -6,17 +6,32 @@ import assert from 'node:assert/strict';
 import { createGetManyCommand, GetManyOptions } from '../../src/commands/get-many.js';
 
 function createMockDeps(overrides: Record<string, unknown> = {}) {
+  const secrets: Record<string, string> = {
+    API_KEY: 'secret-api-key',
+    DB_PASSWORD: 'secret-db-password',
+    JWT_SECRET: 'secret-jwt',
+  };
+
+  const getItemMock = mock.fn((name: string) => ({
+    id: `id-${name}`,
+    title: name,
+    category: 'LOGIN',
+  }));
+
+  const getSecretMock = mock.fn((name: string) => {
+    return secrets[name] ?? null;
+  });
+
   return {
-    getSecret: mock.fn((name: string) => {
-      const secrets: Record<string, string> = {
-        API_KEY: 'secret-api-key',
-        DB_PASSWORD: 'secret-db-password',
-        JWT_SECRET: 'secret-jwt',
-      };
+    getSecret: getSecretMock,
+    // Async versions for true parallelism
+    getSecretAsync: mock.fn(async (name: string) => {
       return secrets[name] ?? null;
     }),
     checkOpCli: mock.fn(() => {}),
-    getItem: mock.fn((name: string) => ({
+    getItem: getItemMock,
+    // Async version for true parallelism
+    getItemAsync: mock.fn(async (name: string) => ({
       id: `id-${name}`,
       title: name,
       category: 'LOGIN',
@@ -62,7 +77,8 @@ describe('get-many command', () => {
 
     await getMany(['API_KEY', 'DB_PASSWORD'], { quiet: true, plain: true });
 
-    assert.equal(deps.getSecret.mock.calls.length, 2);
+    // Uses async version for true parallelism
+    assert.equal(deps.getSecretAsync.mock.calls.length, 2);
     assert.ok(logs.some((l) => l.includes('secret-api-key')));
     assert.ok(logs.some((l) => l.includes('secret-db-password')));
   });
@@ -139,7 +155,7 @@ describe('get-many command', () => {
 
   test('escapes special characters in env format', async () => {
     const deps = createMockDeps({
-      getSecret: mock.fn((name: string) => {
+      getSecretAsync: mock.fn(async (name: string) => {
         if (name === 'SPECIAL') return 'value with $var and "quotes"';
         return null;
       }),
@@ -200,7 +216,7 @@ describe('get-many command', () => {
 
   test('uses smart field detection per item', async () => {
     const deps = createMockDeps({
-      getItem: mock.fn((name: string) => ({
+      getItemAsync: mock.fn(async (name: string) => ({
         id: `id-${name}`,
         title: name,
         category: name === 'API_KEY' ? 'API_CREDENTIAL' : 'LOGIN',
@@ -224,7 +240,7 @@ describe('get-many command', () => {
     const callOrder: string[] = [];
 
     const deps = createMockDeps({
-      getSecret: mock.fn((name: string) => {
+      getSecretAsync: mock.fn(async (name: string) => {
         callCount++;
         callOrder.push(name);
         return `secret-${name}`;
