@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.3.0...v1.4.0) (2026-01-17)
+
+
+### Features
+
+* add similar item suggestions to copy and inspect commands ([1299e2d](https://github.com/dallascrilley/op-cli-helper/commit/1299e2df14ce841b7bb4c401e5dc35a078fe947d))
+
 # [1.3.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.2.0...v1.3.0) (2026-01-17)
 
 
