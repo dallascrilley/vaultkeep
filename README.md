@@ -9,9 +9,13 @@ Easy secret retrieval from 1Password with smart fallbacks and interactive prompt
 - 🔐 **Smart retrieval** - Get secrets with automatic fallback prompts
 - 🧠 **Smart field detection** - Auto-detects the right field based on item type (API keys use `credential`, logins use `password`)
 - 📝 **Interactive prompts** - Create secrets on-the-fly if not found
+- 🧭 **Interactive mode** - Fuzzy browse vaults and items
 - 📋 **List & search** - Browse your vault items
 - ⭐ **Favorites** - Quick access to your most-used secrets
 - 📤 **Export** - Generate .env files from your vault
+- ⚙️ **Config file** - Defaults via `.opsrc` (vault, field, envFile, parallel)
+- 🔁 **Session caching** - Cache OP_SESSION tokens to reduce prompts
+- ✅ **Validated env mappings** - Schema checks for `.env.ops` / `.env.ops.json`
 - 🔍 **Inspect** - Discover available fields for any secret
 - 🏦 **Vaults** - List and browse available vaults
 - 💡 **Smart suggestions** - Get hints when secrets or fields aren't found
@@ -172,12 +176,59 @@ Then run:
 ```bash
 ops run -- node app.js
 
+# Resolve secrets in parallel (default: 5)
+ops run --parallel 10 -- node app.js
+
 # Or inline mappings
 ops run --env API_KEY=MY_API_KEY_SECRET -- node app.js
 
 # Verbose mode shows which secrets are injected
 ops run --verbose --env API_KEY=MY_API_KEY_SECRET -- node app.js
 ```
+
+You can also use JSON mapping files with schema validation:
+
+```json
+{
+  "API_KEY": "MY_API_KEY_SECRET",
+  "DB_PASSWORD": "MY_DB_PASSWORD"
+}
+```
+
+Save as `.env.ops.json` and run `ops run -- node app.js` to load it.
+
+### Interactive mode
+
+Browse vaults and items with a fuzzy finder:
+
+```bash
+ops interactive
+# or
+ops i
+```
+
+Choose an item, then copy/get/inspect it from the action menu.
+
+### Config file (.opsrc)
+
+Set defaults in `~/.opsrc` or `.opsrc` in your project (JSON or YAML):
+
+```yaml
+vault: Work
+field: password
+envFile: .env.ops
+parallel: 8
+sessionCache:
+  enabled: true
+  path: ~/.config/ops-cli/session.json
+```
+
+Use a custom path with `OPS_CONFIG=/path/to/.opsrc`.
+
+### Session caching
+
+By default ops stores OP_SESSION tokens in `~/.config/ops-cli/session.json`.
+Disable with `OPS_NO_SESSION_CACHE=1` or `OPS_SESSION_CACHE=0`.
 
 ### Resolve a share link
 
