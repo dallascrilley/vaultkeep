@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.5.0...v1.6.0) (2026-01-17)
+
+
+### Features
+
+* **cli:** add get-many command for batch secret retrieval ([b548743](https://github.com/dallascrilley/op-cli-helper/commit/b5487438f91063091b636192bcc174de6224cfbb)), closes [#15](https://github.com/dallascrilley/op-cli-helper/issues/15)
+
 # [1.5.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.4.1...v1.5.0) (2026-01-17)
 
 
