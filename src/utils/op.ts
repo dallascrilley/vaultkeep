@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { OpItem, OpError } from './types.js';
+import { withRetrySync, RetryOptions, isTransientError } from './retry.js';
 
 /**
  * Load service account token from ~/.config/op/sa_token
@@ -53,6 +54,38 @@ function getOpEnvWithoutServiceAccount(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   delete env.OP_SERVICE_ACCOUNT_TOKEN;
   return env;
+}
+
+/**
+ * Global retry options that can be configured per-command
+ */
+let globalRetryOptions: RetryOptions = {};
+
+/**
+ * Set global retry options (called from CLI commands)
+ */
+export function setRetryOptions(options: RetryOptions): void {
+  globalRetryOptions = options;
+}
+
+/**
+ * Get current retry options
+ */
+export function getRetryOptions(): RetryOptions {
+  return globalRetryOptions;
+}
+
+/**
+ * Check if an op error is retryable based on error message
+ */
+function isOpErrorRetryable(error: Error): boolean {
+  const message = error.message.toLowerCase();
+
+  // Format the stderr if it's a child process error
+  const stderr = (error as any).stderr?.toString().toLowerCase() || '';
+  const combined = message + ' ' + stderr;
+
+  return isTransientError(new Error(combined));
 }
 
 function isShareLinkUnsupported(message: string): boolean {
@@ -226,13 +259,16 @@ export function checkOpCli(): void {
  */
 export function listItems(vault: string = 'Private'): OpItem[] {
   const env = getOpEnv();
-  
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
+
   try {
-    const output = execSync(
-      `op item list --vault="${vault}" --format=json`,
-      { encoding: 'utf-8', stdio: 'pipe', env }
-    );
-    return JSON.parse(output);
+    return withRetrySync(() => {
+      const output = execSync(
+        `op item list --vault="${vault}" --format=json`,
+        { encoding: 'utf-8', stdio: 'pipe', env }
+      );
+      return JSON.parse(output);
+    }, retryOpts);
   } catch (error: any) {
     if (error.stderr?.includes('vault')) {
       throw new OpError(`Vault "${vault}" not found`, 1);
@@ -271,35 +307,38 @@ export function getSecret(
   field: string = 'password'
 ): string | null {
   const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
 
   try {
-    // Try direct reference first (op://vault/item/field)
-    if (reference.startsWith('op://')) {
-      const output = execSync(`op read "${reference}"`, {
+    return withRetrySync(() => {
+      // Try direct reference first (op://vault/item/field)
+      if (reference.startsWith('op://')) {
+        const output = execSync(`op read "${reference}"`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env,
+        });
+        return output.trim();
+      }
+
+      // If name has special chars (like /), use item ID instead
+      let itemRef = reference;
+      if (hasSpecialChars(reference)) {
+        const itemId = getItemId(reference, vault);
+        if (itemId) {
+          itemRef = itemId;
+        }
+      }
+
+      // Construct reference
+      const opReference = `op://${vault}/${itemRef}/${field}`;
+      const output = execSync(`op read "${opReference}" 2>/dev/null`, {
         encoding: 'utf-8',
         stdio: 'pipe',
         env,
       });
       return output.trim();
-    }
-
-    // If name has special chars (like /), use item ID instead
-    let itemRef = reference;
-    if (hasSpecialChars(reference)) {
-      const itemId = getItemId(reference, vault);
-      if (itemId) {
-        itemRef = itemId;
-      }
-    }
-
-    // Construct reference
-    const opReference = `op://${vault}/${itemRef}/${field}`;
-    const output = execSync(`op read "${opReference}" 2>/dev/null`, {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      env,
-    });
-    return output.trim();
+    }, retryOpts);
   } catch {
     return null;
   }
@@ -396,13 +435,16 @@ export function updateItem(
  */
 export function getItem(title: string, vault: string = 'Private'): OpItem | null {
   const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
 
   try {
-    const output = execSync(
-      `op item get "${title}" --vault="${vault}" --format=json`,
-      { encoding: 'utf-8', stdio: 'pipe', env }
-    );
-    return JSON.parse(output);
+    return withRetrySync(() => {
+      const output = execSync(
+        `op item get "${title}" --vault="${vault}" --format=json`,
+        { encoding: 'utf-8', stdio: 'pipe', env }
+      );
+      return JSON.parse(output);
+    }, retryOpts);
   } catch {
     return null;
   }
@@ -434,13 +476,16 @@ export function getItemFromShareLink(shareLink: string): OpItem {
  */
 export function listFavorites(vault: string = 'Private'): OpItem[] {
   const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
 
   try {
-    const output = execSync(
-      `op item list --vault="${vault}" --favorite --format=json`,
-      { encoding: 'utf-8', stdio: 'pipe', env }
-    );
-    return JSON.parse(output);
+    return withRetrySync(() => {
+      const output = execSync(
+        `op item list --vault="${vault}" --favorite --format=json`,
+        { encoding: 'utf-8', stdio: 'pipe', env }
+      );
+      return JSON.parse(output);
+    }, retryOpts);
   } catch (error: any) {
     if (error.stderr?.includes('vault')) {
       throw new OpError(`Vault "${vault}" not found`, 1);
@@ -516,14 +561,17 @@ export interface OpVault {
  */
 export function listVaults(): OpVault[] {
   const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
 
   try {
-    const output = execSync('op vault list --format=json', {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      env,
-    });
-    return JSON.parse(output);
+    return withRetrySync(() => {
+      const output = execSync('op vault list --format=json', {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        env,
+      });
+      return JSON.parse(output);
+    }, retryOpts);
   } catch (error: unknown) {
     const message = formatOpErrorMessage(error);
     throw new OpError(`Failed to list vaults${message ? ': ' + message : ''}`, 1);

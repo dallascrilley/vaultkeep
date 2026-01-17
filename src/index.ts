@@ -12,6 +12,8 @@ import { runCommand } from './commands/run.js';
 import { inspectCommand } from './commands/inspect.js';
 import { vaultsCommand } from './commands/vaults.js';
 import { completionCommand } from './commands/completion.js';
+import { setRetryOptions } from './utils/op.js';
+import { isRetryDisabled } from './utils/retry.js';
 
 // Dynamic version from package.json
 const require = createRequire(import.meta.url);
@@ -26,6 +28,24 @@ program
   .addHelpCommand()
   .showHelpAfterError()
   .showSuggestionAfterError()
+  .option('--retry <count>', 'max retry attempts for transient failures (default: 3, env: OPS_RETRY_COUNT)')
+  .option('--no-retry', 'disable retry logic (env: OPS_NO_RETRY=1)')
+  .hook('preAction', (thisCommand) => {
+    const opts = thisCommand.opts();
+
+    // Configure retry options based on CLI flags
+    if (opts.retry === false || isRetryDisabled()) {
+      // --no-retry flag or OPS_NO_RETRY=1
+      setRetryOptions({ maxRetries: 0 });
+    } else if (typeof opts.retry === 'string') {
+      // --retry N flag
+      const retryCount = parseInt(opts.retry, 10);
+      if (!isNaN(retryCount) && retryCount >= 0) {
+        setRetryOptions({ maxRetries: retryCount });
+      }
+    }
+    // Otherwise use defaults from environment or built-in defaults
+  })
   .action(() => {
     // Show help when no command is provided (exit 0, not 1)
     program.outputHelp();
