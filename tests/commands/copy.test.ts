@@ -14,6 +14,7 @@ function buildCopyCommand() {
   return createCopyCommand({
     getSecret: () => secretValue,
     checkOpCli: () => {},
+    findSimilarItems: () => [],
     clipboardRead: async () => clipboardValue,
     clipboardWrite: async (value: string) => {
       clipboardValue = value;

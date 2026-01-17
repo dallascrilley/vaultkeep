@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import clipboardy from 'clipboardy';
-import { getSecret, checkOpCli } from '../utils/op.js';
+import { getSecret, checkOpCli, findSimilarItems } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -31,6 +31,7 @@ function resolveTtlSeconds(value?: number): number {
 export interface CopyDependencies {
   getSecret: typeof getSecret;
   checkOpCli: typeof checkOpCli;
+  findSimilarItems: typeof findSimilarItems;
   clipboardRead: () => Promise<string>;
   clipboardWrite: (value: string) => Promise<void>;
   applyColorConfig: typeof applyColorConfig;
@@ -43,6 +44,7 @@ export interface CopyDependencies {
 const defaultDependencies: CopyDependencies = {
   getSecret,
   checkOpCli,
+  findSimilarItems,
   clipboardRead: () => clipboardy.read(),
   clipboardWrite: (value: string) => clipboardy.write(value),
   applyColorConfig,
@@ -82,7 +84,17 @@ export function createCopyCommand(
         spinner.fail(
           chalk.yellow(`Secret "${name}" not found in vault "${vault}"`)
         );
-        throw new OpError('Secret not found.', 1);
+
+        // Suggest similar items
+        const similar = deps.findSimilarItems(name, vault);
+        if (similar.length > 0) {
+          console.log(chalk.cyan('\nDid you mean?'));
+          for (const suggestion of similar) {
+            console.log(chalk.white(`  - ${suggestion}`));
+          }
+        }
+
+        throw new OpError('Secret not found. Use ops list to see available items.', 1);
       }
 
       await deps.clipboardWrite(secret);

@@ -12,6 +12,7 @@ function buildInspectCommand(item: OpItem | null = null) {
   return createInspectCommand({
     getItem: () => item,
     checkOpCli: () => {},
+    findSimilarItems: () => [],
     applyColorConfig: () => {},
     createSpinner: (_text: string, _quiet: boolean) =>
       ({
