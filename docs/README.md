@@ -324,11 +324,9 @@ export function myOpFunction(args: string): Result {
 
 ### Current State
 
-**Status**: No automated tests yet
+**Status**: Automated tests in place (unit + integration)
 
-### Planned Testing
-
-#### Unit Tests (Planned)
+#### Unit Tests
 
 ```bash
 npm run test
@@ -339,7 +337,7 @@ npm run test
 - Command logic - Test with fake op CLI responses
 - Error handling - Validate `OpError` behavior
 
-#### Integration Tests (Planned)
+#### Integration Tests
 
 Test against real 1Password CLI with test vault:
 
@@ -436,12 +434,6 @@ npm install -g .  # Production
 - Inherits all auth flows (biometric, service accounts, etc.)
 - Simpler implementation
 
-### Why No Tests Yet?
-- MVP focused on functionality
-- Mocking `execSync` requires test infrastructure
-- Manual testing sufficient for current scope
-- Tests planned for v2.0
-
 ## Troubleshooting
 
 ### Common Issues
@@ -476,10 +468,9 @@ node --inspect-brk dist/index.js get SECRET
 ## Future Enhancements
 
 ### Planned Features
-- [ ] Automated tests (unit + integration)
-- [ ] Shell completion (bash/zsh)
-- [ ] Config file support (`~/.opsrc`)
-- [ ] Batch operations
+- [ ] Secret templates for common patterns
+- [ ] Diff command to compare secrets between vaults/environments
+- [ ] Upgrade to Node 22 native APIs
 - [ ] Template-based export (`.env.template`)
 - [ ] Encrypted local cache (optional)
 
