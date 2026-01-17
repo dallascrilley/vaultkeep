@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.7.0...v1.8.0) (2026-01-17)
+
+
+### Features
+
+* add interactive fuzzy finder mode ([c6bbe3c](https://github.com/dallascrilley/op-cli-helper/commit/c6bbe3cfa72b5593c75d613afb3d5b2c3670e53b))
+
 # [1.7.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.6.0...v1.7.0) (2026-01-17)
 
 
