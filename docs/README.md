@@ -20,13 +20,14 @@ Developer and architecture documentation for `op-cli-helper`.
 
 1. **Smart fallback prompts** - Auto-create secrets if not found
 2. **Service account support** - Reads `OP_SERVICE_ACCOUNT_TOKEN` from `~/.config/op/sa_token`
-3. **Interactive UX** - Colored output, spinners, and prompts
-4. **Multiple interfaces** - Get/set/list/export commands
+3. **Interactive UX** - Colored output, spinners, prompts, and fuzzy browsing
+4. **Templates** - Create common secret sets in one command
+5. **Multiple interfaces** - Get/set/list/export/run/template commands
 
 ### Design Principles
 
 - **Thin wrapper** - Delegates all 1Password operations to `op` CLI
-- **Zero state** - Stateless operation, no local cache/DB
+- **Minimal local state** - Optional session and template caches in `~/.config/ops-cli`
 - **Fail-fast** - Validate `op` CLI availability upfront
 - **Secure by default** - Never log/expose secret values
 - **Agent-friendly** - Supports silent mode for scripting
@@ -37,6 +38,7 @@ Developer and architecture documentation for `op-cli-helper`.
 |---------|---------|-----|
 | `commander` | CLI framework | Robust arg parsing, help generation |
 | `inquirer` | Interactive prompts | Type-safe prompt library |
+| `inquirer-autocomplete-prompt` | Fuzzy selection | Interactive browsing |
 | `chalk` | Terminal colors | Better UX with colored output |
 | `ora` | Spinners | Visual feedback for async ops |
 
@@ -49,10 +51,16 @@ op-cli-helper/
 │   ├── commands/             # Command implementations
 │   │   ├── get.ts            # Get/create secrets
 │   │   ├── set.ts            # Store secrets
+│   │   ├── template.ts       # Template management
+│   │   ├── interactive.ts    # Fuzzy interactive mode
 │   │   ├── list.ts           # List vault items
 │   │   └── export.ts         # Export to .env/JSON
+│   ├── templates/            # Built-in template definitions
 │   └── utils/
 │       ├── op.ts             # 1Password CLI wrapper functions
+│       ├── templates.ts      # Template store + parsing
+│       ├── session-cache.ts  # Local session caching
+│       ├── env-mapping.ts    # Env mapping validation
 │       └── types.ts          # TypeScript types & error classes
 ├── dist/                     # Compiled JavaScript (git-ignored)
 └── docs/                     # Technical documentation
@@ -360,6 +368,7 @@ Before release:
 - [ ] `ops list --search`
 - [ ] `ops export` to stdout
 - [ ] `ops export --output file`
+- [ ] `ops template apply api` (prompts for values)
 - [ ] Service account token support
 - [ ] Silent mode (piping)
 
