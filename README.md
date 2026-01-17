@@ -10,6 +10,7 @@ Easy secret retrieval from 1Password with smart fallbacks and interactive prompt
 - 🧠 **Smart field detection** - Auto-detects the right field based on item type (API keys use `credential`, logins use `password`)
 - 📝 **Interactive prompts** - Create secrets on-the-fly if not found
 - 🧭 **Interactive mode** - Fuzzy browse vaults and items
+- 🧩 **Templates** - Create common secret sets in one command
 - 📋 **List & search** - Browse your vault items
 - ⭐ **Favorites** - Quick access to your most-used secrets
 - 📤 **Export** - Generate .env files from your vault
@@ -196,6 +197,24 @@ You can also use JSON mapping files with schema validation:
 ```
 
 Save as `.env.ops.json` and run `ops run -- node app.js` to load it.
+
+### Templates
+
+Create common secret sets from a template:
+
+```bash
+# List templates
+ops template list
+
+# Apply a built-in template
+ops template apply postgres --vault Work
+
+# Provide values inline
+ops template apply api --value API_KEY=secret --value API_URL=https://api.example.com
+
+# Create a custom template
+ops template create my-service --fields "API_KEY,API_SECRET,WEBHOOK_URL"
+```
 
 ### Interactive mode
 

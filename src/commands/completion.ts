@@ -15,7 +15,7 @@ _ops_completion() {
     cur="\${COMP_WORDS[COMP_CWORD]}"
     prev="\${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="get set copy list search favorites vaults inspect export import resolve run interactive completion"
+    commands="get set copy list search favorites vaults inspect export import resolve run interactive template completion"
 
     case "\${COMP_CWORD}" in
         1)
@@ -44,6 +44,10 @@ _ops_completion() {
                     ;;
                 -f|--field)
                     COMPREPLY=( $(compgen -W "password credential username notesPlain api-key token" -- "\${cur}") )
+                    return 0
+                    ;;
+                template)
+                    COMPREPLY=( $(compgen -W "list create apply" -- "\${cur}") )
                     return 0
                     ;;
                 --format)
@@ -97,6 +101,9 @@ _ops_completion() {
                         interactive)
                             opts="-v --vault -f --field --no-color"
                             ;;
+                        template)
+                            opts="list create apply --no-color"
+                            ;;
                         completion)
                             opts="bash zsh fish"
                             ;;
@@ -135,6 +142,7 @@ _ops() {
         'resolve:Resolve 1Password share link'
         'run:Run command with secrets injected'
         'interactive:Interactive browsing mode'
+        'template:Manage secret templates'
         'completion:Generate shell completion script'
     )
 
@@ -294,6 +302,48 @@ _ops() {
                         '--verbose[Show injected secrets]' \\
                         '--no-color[Disable colors]'
                     ;;
+                template)
+                    _arguments \\
+                        '1:subcommand:(list create apply)' \\
+                        '*::arg:->template_args'
+                    case "$state" in
+                        template_args)
+                            case "$words[2]" in
+                                list)
+                                    _arguments \\
+                                        '-j[Output as JSON]' \\
+                                        '--json[Output as JSON]' \\
+                                        '-q[Suppress output]' \\
+                                        '--quiet[Suppress output]' \\
+                                        '--no-color[Disable colors]'
+                                    ;;
+                                create)
+                                    _arguments \\
+                                        '1:template name:' \\
+                                        '--fields[Template fields]:fields:' \\
+                                        '--description[Template description]:description:' \\
+                                        '--force[Overwrite existing template]' \\
+                                        '-q[Suppress output]' \\
+                                        '--quiet[Suppress output]' \\
+                                        '--no-color[Disable colors]'
+                                    ;;
+                                apply)
+                                    _arguments \\
+                                        '1:template name:' \\
+                                        '-v[Vault name]:vault:_ops_vaults' \\
+                                        '--vault[Vault name]:vault:_ops_vaults' \\
+                                        '-f[Field name]:field:(password credential username notesPlain api-key token)' \\
+                                        '--field[Field name]:field:(password credential username notesPlain api-key token)' \\
+                                        '--value[Provide field value]:pair:' \\
+                                        '--no-input[Disable prompts]' \\
+                                        '-q[Suppress output]' \\
+                                        '--quiet[Suppress output]' \\
+                                        '--no-color[Disable colors]'
+                                    ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
                 interactive)
                     _arguments \\
                         '-v[Vault name]:vault:_ops_vaults' \\
@@ -352,6 +402,7 @@ complete -c ops -n __fish_use_subcommand -a import -d 'Import secrets from .env 
 complete -c ops -n __fish_use_subcommand -a resolve -d 'Resolve 1Password share link'
 complete -c ops -n __fish_use_subcommand -a run -d 'Run command with secrets injected'
 complete -c ops -n __fish_use_subcommand -a interactive -d 'Interactive browsing mode'
+complete -c ops -n __fish_use_subcommand -a template -d 'Manage secret templates'
 complete -c ops -n __fish_use_subcommand -a completion -d 'Generate shell completion script'
 
 # Common options
@@ -399,6 +450,16 @@ complete -c ops -n '__fish_seen_subcommand_from run' -l verbose -d 'Show injecte
 
 # interactive command options
 complete -c ops -n '__fish_seen_subcommand_from interactive' -l field -s f -d 'Field name'
+
+# template command options
+complete -c ops -n '__fish_seen_subcommand_from template' -a 'list create apply' -d 'Template subcommand'
+complete -c ops -n '__fish_seen_subcommand_from template; and __fish_seen_subcommand_from apply' -l vault -s v -d 'Vault name'
+complete -c ops -n '__fish_seen_subcommand_from template; and __fish_seen_subcommand_from apply' -l field -s f -d 'Field name'
+complete -c ops -n '__fish_seen_subcommand_from template; and __fish_seen_subcommand_from apply' -l value -d 'Provide field value'
+complete -c ops -n '__fish_seen_subcommand_from template; and __fish_seen_subcommand_from apply' -l no-input -d 'Disable prompts'
+complete -c ops -n '__fish_seen_subcommand_from template; and __fish_seen_subcommand_from create' -l fields -d 'Template fields'
+complete -c ops -n '__fish_seen_subcommand_from template; and __fish_seen_subcommand_from create' -l description -d 'Template description'
+complete -c ops -n '__fish_seen_subcommand_from template; and __fish_seen_subcommand_from create' -l force -d 'Overwrite existing template'
 
 # completion command - shell argument
 complete -c ops -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish' -d 'Shell type'
