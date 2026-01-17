@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.6.0...v1.7.0) (2026-01-17)
+
+
+### Features
+
+* add config, session cache, and env schema validation ([829e391](https://github.com/dallascrilley/op-cli-helper/commit/829e391d9333a4bde558d233e02bfab1d4da222a))
+
 # [1.6.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.5.0...v1.6.0) (2026-01-17)
 
 
