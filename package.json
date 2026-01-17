@@ -23,7 +23,10 @@
     "dev": "TS_NODE_TRANSPILE_ONLY=1 node --loader ts-node/esm src/index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm",
+    "test": "TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm 'tests/commands/**/*.test.ts' 'tests/utils/**/*.test.ts'",
+    "test:unit": "TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm 'tests/commands/**/*.test.ts' 'tests/utils/**/*.test.ts'",
+    "test:integration": "npm run build && TEST_OP_CLI=1 TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm 'tests/integration/**/*.test.ts'",
+    "test:all": "npm run test:unit && npm run test:integration",
     "prepublishOnly": "npm run build",
     "release": "semantic-release --dry-run",
     "release:ci": "semantic-release"
