@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.1.3...v1.2.0) (2026-01-17)
+
+
+### Features
+
+* add shell completion for bash, zsh, and fish ([a0698a7](https://github.com/dallascrilley/op-cli-helper/commit/a0698a771e405931d0d6a8d0125257caa287e905))
+
 ## [1.1.3](https://github.com/dallascrilley/op-cli-helper/compare/v1.1.2...v1.1.3) (2026-01-17)
 
 
