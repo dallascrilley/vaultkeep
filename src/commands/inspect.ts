@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { getItem, checkOpCli } from '../utils/op.js';
+import { getItem, checkOpCli, findSimilarItems } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -18,6 +18,7 @@ export interface InspectOptions {
 export interface InspectDependencies {
   getItem: typeof getItem;
   checkOpCli: typeof checkOpCli;
+  findSimilarItems: typeof findSimilarItems;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
   resolveBooleanOption: typeof resolveBooleanOption;
@@ -28,6 +29,7 @@ export interface InspectDependencies {
 const defaultDependencies: InspectDependencies = {
   getItem,
   checkOpCli,
+  findSimilarItems,
   applyColorConfig,
   createSpinner,
   resolveBooleanOption,
@@ -66,6 +68,16 @@ export function createInspectCommand(
 
       if (!item) {
         spinner.fail(chalk.yellow(`Item "${name}" not found in vault "${vault}"`));
+
+        // Suggest similar items
+        const similar = deps.findSimilarItems(name, vault);
+        if (similar.length > 0) {
+          deps.log(chalk.cyan('\nDid you mean?'));
+          for (const suggestion of similar) {
+            deps.log(chalk.white(`  - ${suggestion}`));
+          }
+        }
+
         throw new OpError(`Item not found. Use ops list to see available items.`, 1);
       }
 
