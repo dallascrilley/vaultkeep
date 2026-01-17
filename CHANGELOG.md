@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.2.0...v1.3.0) (2026-01-17)
+
+
+### Features
+
+* add integration test suite with test vault support ([7eb4af0](https://github.com/dallascrilley/op-cli-helper/commit/7eb4af055ad53437a7331caa533662799672ad08)), closes [#10](https://github.com/dallascrilley/op-cli-helper/issues/10)
+
 # [1.2.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.1.3...v1.2.0) (2026-01-17)
 
 
