@@ -16,6 +16,7 @@ import { getManyCommand } from './commands/get-many.js';
 import { setRetryOptions } from './utils/op.js';
 import { isRetryDisabled } from './utils/retry.js';
 import { loadSessionCacheIntoEnv, persistSessionCacheFromEnv } from './utils/session-cache.js';
+import { interactiveCommand } from './commands/interactive.js';
 
 // Dynamic version from package.json
 const require = createRequire(import.meta.url);
@@ -219,6 +220,15 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(resolveCommand);
+
+program
+  .command('interactive')
+  .alias('i')
+  .description('Browse vaults and items interactively')
+  .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
+  .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
+  .option('--no-color', 'disable color output')
+  .action(interactiveCommand);
 
 program
   .command('completion [shell]')
