@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.4.0...v1.4.1) (2026-01-17)
+
+
+### Bug Fixes
+
+* **ci:** use simple glob patterns for cross-platform test compatibility ([60d1ab4](https://github.com/dallascrilley/op-cli-helper/commit/60d1ab4182aac99547e577c24c3ded46b5bcfc27))
+
 # [1.4.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.3.0...v1.4.0) (2026-01-17)
 
 
