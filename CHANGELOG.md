@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.8.0...v1.9.0) (2026-01-17)
+
+
+### Features
+
+* add secret templates ([5908ab1](https://github.com/dallascrilley/op-cli-helper/commit/5908ab1457bf8cd5479fa21542645cf2222f80cc))
+
 # [1.8.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.7.0...v1.8.0) (2026-01-17)
 
 
