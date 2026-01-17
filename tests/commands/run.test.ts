@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createRunCommand, ProcessLike } from '../../src/commands/run.js';
 import type spawnType from 'cross-spawn';
-import type { readFileSync as readFileSyncType } from 'node:fs';
+import { OpError } from '../../src/utils/types.js';
 
 class FakeChildProcess extends EventEmitter {
   pid = 123;
@@ -32,16 +32,14 @@ test('loads secrets from env file and injects into command env', async () => {
     checkOpCli: () => {},
     getSecret: (reference: string) =>
       reference === 'MY_SECRET' ? 'secret-value' : null,
-    readFileSync: ((path: string, encoding: BufferEncoding) =>
-      'API_KEY=MY_SECRET') as typeof readFileSyncType,
-    existsSync: () => true,
-    parseEnv: () => ({ API_KEY: 'MY_SECRET' }),
+    loadEnvMappingFile: () => ({ API_KEY: 'MY_SECRET' }),
     spawn: ((cmd: string, args: string[], options: any) => {
       spawnCalls.push({ cmd, args, options });
       setImmediate(() => child.emit('exit', 0, null));
       return child as any;
     }) as unknown as typeof spawnType,
     process: processMock,
+    loadConfig: () => ({}),
   });
 
   await runCommand(['node', 'app.js'], {});
@@ -62,15 +60,14 @@ test('uses --env overrides when provided', async () => {
     checkOpCli: () => {},
     getSecret: (reference: string) =>
       reference === 'OVERRIDE' ? 'override-value' : null,
-    readFileSync: ((path: string, encoding: BufferEncoding) => '') as typeof readFileSyncType,
-    existsSync: () => false,
-    parseEnv: () => ({}),
+    loadEnvMappingFile: () => ({}),
     spawn: ((cmd: string, args: string[], options: any) => {
       spawnCalls.push({ cmd, args, options });
       setImmediate(() => child.emit('exit', 0, null));
       return child as any;
     }) as unknown as typeof spawnType,
     process: processMock,
+    loadConfig: () => ({}),
   });
 
   await runCommand(['printenv', 'API_KEY'], { env: ['API_KEY=OVERRIDE'] });
@@ -91,16 +88,14 @@ test('exits with OpError when env file parsing fails', async () => {
   const runCommand = createRunCommand({
     checkOpCli: () => {},
     getSecret: () => 'value',
-    readFileSync: ((path: string, encoding: BufferEncoding) =>
-      'INVALID_LINE') as typeof readFileSyncType,
-    existsSync: () => true,
-    parseEnv: () => {
-      throw new Error('Parse failure');
+    loadEnvMappingFile: () => {
+      throw new OpError('Failed to parse \"custom.env.ops\": Parse failure', 2);
     },
     spawn: (() => {
       throw new Error('spawn should not be called');
     }) as unknown as typeof spawnType,
     process: processMock,
+    loadConfig: () => ({ envFile: 'custom.env.ops' }),
   });
 
   await assert.rejects(() => runCommand(['echo', 'ok'], {}), /process\.exit/);
@@ -126,16 +121,14 @@ test('--verbose flag logs injected variable names without exposing values', asyn
       if (reference === 'SECRET_B') return 'actual-secret-value-b';
       return null;
     },
-    readFileSync: ((path: string, encoding: BufferEncoding) =>
-      'API_KEY=SECRET_A\nDB_PASS=SECRET_B') as typeof readFileSyncType,
-    existsSync: () => true,
-    parseEnv: () => ({ API_KEY: 'SECRET_A', DB_PASS: 'SECRET_B' }),
+    loadEnvMappingFile: () => ({ API_KEY: 'SECRET_A', DB_PASS: 'SECRET_B' }),
     spawn: ((cmd: string, args: string[], options: any) => {
       spawnCalls.push({ cmd, args, options });
       setImmediate(() => child.emit('exit', 0, null));
       return child as any;
     }) as unknown as typeof spawnType,
     process: processMock,
+    loadConfig: () => ({}),
   });
 
   await runCommand(['node', 'app.js'], { verbose: true });
@@ -156,4 +149,31 @@ test('--verbose flag logs injected variable names without exposing values', asyn
   assert.equal(spawnCalls.length, 1);
   assert.equal(spawnCalls[0].options.env.API_KEY, 'actual-secret-value-a');
   assert.equal(spawnCalls[0].options.env.DB_PASS, 'actual-secret-value-b');
+});
+
+test('uses config envFile when --env-file is not provided', async () => {
+  const child = new FakeChildProcess();
+  const spawnCalls: Array<{ cmd: string; args: string[]; options: any }> = [];
+  const processMock = createProcessMock({ PATH: '/bin' });
+
+  const runCommand = createRunCommand({
+    checkOpCli: () => {},
+    getSecret: (reference: string) =>
+      reference === 'CONFIG_SECRET' ? 'config-value' : null,
+    loadEnvMappingFile: (path: string) => {
+      assert.equal(path, 'custom.env.ops');
+      return { API_KEY: 'CONFIG_SECRET' };
+    },
+    spawn: ((cmd: string, args: string[], options: any) => {
+      spawnCalls.push({ cmd, args, options });
+      setImmediate(() => child.emit('exit', 0, null));
+      return child as any;
+    }) as unknown as typeof spawnType,
+    process: processMock,
+    loadConfig: () => ({ envFile: 'custom.env.ops' }),
+  });
+
+  await runCommand(['node', 'app.js'], {});
+
+  assert.equal(spawnCalls[0].options.env.API_KEY, 'config-value');
 });
