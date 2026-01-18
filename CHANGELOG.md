@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.10.0...v1.11.0) (2026-01-18)
+
+
+### Features
+
+* add UX improvements for developer productivity ([d1dac07](https://github.com/dallascrilley/op-cli-helper/commit/d1dac0713fd9af9df97a7521c6062134453f67e8))
+
 # [1.10.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.9.1...v1.10.0) (2026-01-18)
 
 
