@@ -1,3 +1,15 @@
+# [1.12.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.11.1...v1.12.0) (2026-01-18)
+
+
+### Bug Fixes
+
+* add missing findSimilarItemsWithScore mock in test ([be6f7cb](https://github.com/dallascrilley/op-cli-helper/commit/be6f7cbad91934508194e09cd963f66d7a4c760b))
+
+
+### Features
+
+* add interactive fuzzy matching for secret names ([cb4fe62](https://github.com/dallascrilley/op-cli-helper/commit/cb4fe62d15d8b10bfa07f0f7a58ff5dfcf17f1c9))
+
 ## [1.11.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.11.0...v1.11.1) (2026-01-18)
 
 
