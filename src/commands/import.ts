@@ -50,11 +50,11 @@ const defaultDependencies: ImportDependencies = {
 
 export function createImportCommand(
   overrides: Partial<ImportDependencies> = {}
-): (filePath: string, options: ImportOptions) => Promise<void> {
+): (filePath: string | undefined, options: ImportOptions) => Promise<void> {
   const deps = { ...defaultDependencies, ...overrides };
 
   return async function importCommand(
-    filePath: string,
+    filePath: string | undefined,
     options: ImportOptions
   ): Promise<void> {
     try {
@@ -69,13 +69,27 @@ export function createImportCommand(
       const vault = deps.resolveVault(options.vault);
       let contents: string;
 
-      try {
-        contents = deps.readFileSync(filePath, 'utf-8');
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unable to read file.';
-        throw new OpError(`Failed to read "${filePath}": ${message}`, 2);
+      // Support stdin: read from stdin if filePath is "-" or undefined with piped input
+      const readFromStdin = filePath === '-' || (!filePath && !process.stdin.isTTY);
+      
+      if (readFromStdin) {
+        try {
+          contents = deps.readFileSync(0, 'utf-8');
+        } catch (error) {
+          throw new OpError('Failed to read from stdin.', 2);
+        }
+      } else if (filePath) {
+        try {
+          contents = deps.readFileSync(filePath, 'utf-8');
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : 'Unable to read file.';
+          throw new OpError(`Failed to read "${filePath}": ${message}`, 2);
+        }
+      } else {
+        throw new OpError('No file path provided. Use "ops import <file>" or pipe data via stdin.', 2);
       }
+      
       let parsed: Record<string, string>;
       try {
         parsed = deps.parseEnv(contents);

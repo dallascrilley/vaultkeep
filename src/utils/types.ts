@@ -24,6 +24,7 @@ export interface ExportOptions {
   format?: 'env' | 'json';
   json?: boolean;
   output?: string;
+  filter?: string;
   quiet?: boolean;
   color?: boolean;
 }
