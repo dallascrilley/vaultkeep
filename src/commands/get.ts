@@ -250,7 +250,17 @@ export function createGetCommand(
         if (selected !== '__create__') {
           // User selected a similar item - fetch it
           const fetchSpinner = deps.createSpinner(`Fetching "${selected}"...`, quietSpinner);
-          const selectedSecret = deps.getSecret(selected, vault, field);
+
+          // Re-detect field for the selected item (unless user specified one explicitly)
+          let selectedField = field;
+          if (!options.field) {
+            const selectedItem = deps.getItem(selected, vault);
+            if (selectedItem?.category) {
+              selectedField = deps.getDefaultFieldForCategory(selectedItem.category);
+            }
+          }
+
+          const selectedSecret = deps.getSecret(selected, vault, selectedField);
 
           if (selectedSecret !== null) {
             if (!quietSpinner) {
@@ -259,7 +269,7 @@ export function createGetCommand(
 
             // Check output format using options (not narrowed outputMode)
             if (options.json) {
-              console.log(JSON.stringify({ name: selected, vault, field, value: selectedSecret, fuzzyMatch: true }, null, 2));
+              console.log(JSON.stringify({ name: selected, vault, field: selectedField, value: selectedSecret, fuzzyMatch: true }, null, 2));
               return;
             }
 
