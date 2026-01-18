@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.12.0...v1.12.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* re-detect field for fuzzy-matched item selection ([b50753b](https://github.com/dallascrilley/op-cli-helper/commit/b50753b460b67ae166bda35be0714c07eddcaae6))
+
 # [1.12.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.11.1...v1.12.0) (2026-01-18)
 
 
