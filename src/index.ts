@@ -18,6 +18,7 @@ import { setRetryOptions } from './utils/op.js';
 import { isRetryDisabled } from './utils/retry.js';
 import { loadSessionCacheIntoEnv, persistSessionCacheFromEnv } from './utils/session-cache.js';
 import { interactiveCommand } from './commands/interactive.js';
+import { whoamiCommand } from './commands/whoami.js';
 
 // Dynamic version from package.json
 const require = createRequire(import.meta.url);
@@ -76,6 +77,7 @@ program
 
 program
   .command('get-many <names...>')
+  .alias('gets')
   .description('Get multiple secrets at once')
   .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
   .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
@@ -104,7 +106,7 @@ program
   .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
   .option('--value <value>', 'secret value (use "-" to read from stdin)')
   .option('--value-file <file>', 'read secret value from file (use "-" for stdin)')
-  .option('--force', 'overwrite without confirmation')
+  .option('-y, --force', 'overwrite without confirmation')
   .option('--no-input', 'disable prompts (fail if input is required)')
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
@@ -201,13 +203,14 @@ program
   .option('-f, --format <format>', 'output format (env|json)')
   .option('-j, --json', 'alias for --format json')
   .option('-o, --output <file>', 'output file (default: stdout, use "-" for stdout)')
+  .option('--filter <pattern>', 'filter items by glob pattern (e.g. "API_*")')
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(exportCommand);
 
 program
-  .command('import <file>')
-  .description('Import secrets from a .env file into 1Password')
+  .command('import [file]')
+  .description('Import secrets from a .env file into 1Password (use "-" for stdin)')
   .option('-v, --vault <vault>', 'vault name (default: OPS_VAULT or Private)')
   .option('--dry-run', 'preview what would be imported without modifying')
   .option('-q, --quiet', 'suppress non-essential output')
@@ -230,6 +233,14 @@ program
   .option('-f, --field <field>', 'field name (default: OPS_FIELD or password)')
   .option('--no-color', 'disable color output')
   .action(interactiveCommand);
+
+program
+  .command('whoami')
+  .description('Show current 1Password account and vault info')
+  .option('-j, --json', 'output as JSON')
+  .option('-q, --quiet', 'suppress non-essential output')
+  .option('--no-color', 'disable color output')
+  .action(whoamiCommand);
 
 program
   .command('completion [shell]')
@@ -255,7 +266,7 @@ template
   .description('Create a custom template')
   .option('--fields <fields>', 'comma or space separated field names (e.g. API_KEY,API_SECRET)')
   .option('--description <description>', 'template description')
-  .option('--force', 'overwrite existing custom template')
+  .option('-y, --force', 'overwrite existing custom template')
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(templateCreateCommand);

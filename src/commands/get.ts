@@ -73,6 +73,15 @@ export function createGetCommand(
         throw new OpError('Secret name cannot be empty.', 2);
       }
 
+      // Parse KEY=fallback format if provided
+      let actualName = name;
+      let fallbackValue: string | undefined;
+      const eqIndex = name.indexOf('=');
+      if (eqIndex > 0) {
+        actualName = name.substring(0, eqIndex);
+        fallbackValue = name.substring(eqIndex + 1);
+      }
+
       deps.checkOpCli();
 
       if (options.json && (options.plain || options.silent)) {
@@ -83,7 +92,7 @@ export function createGetCommand(
       
       // Cache item data to avoid redundant CLI calls
       // This single call is reused for field detection AND secret retrieval
-      const cachedItem = deps.getItem(name, vault);
+      const cachedItem = deps.getItem(actualName, vault);
       
       // Smart field detection: if no field specified, try to detect from item category
       let field: string;
@@ -128,11 +137,11 @@ export function createGetCommand(
       // Fallback to getSecret only if field not found in cached item
       if (secret === null && cachedItem) {
         // Use cached item ID to avoid redundant getItemId call for special chars
-        const itemRef = cachedItem.id || name;
+        const itemRef = cachedItem.id || actualName;
         secret = deps.getSecret(itemRef, vault, field);
       } else if (secret === null) {
         // Item doesn't exist, getSecret will return null
-        secret = deps.getSecret(name, vault, field);
+        secret = deps.getSecret(actualName, vault, field);
       }
 
       if (secret !== null) {
@@ -141,7 +150,7 @@ export function createGetCommand(
         }
 
         if (outputMode === 'json') {
-          console.log(JSON.stringify({ name, vault, field, value: secret }, null, 2));
+          console.log(JSON.stringify({ name: actualName, vault, field, value: secret }, null, 2));
           return;
         }
 
@@ -157,6 +166,29 @@ export function createGetCommand(
         return;
       }
 
+      // If secret not found but fallback value provided, use it
+      if (fallbackValue !== undefined) {
+        if (!quietSpinner) {
+          spinner.succeed(chalk.yellow('Using fallback value'));
+        }
+
+        if (outputMode === 'json') {
+          console.log(JSON.stringify({ name: actualName, vault, field, value: fallbackValue, fallback: true }, null, 2));
+          return;
+        }
+
+        if (outputMode === 'plain') {
+          console.log(fallbackValue);
+          return;
+        }
+
+        if (!quiet) {
+          console.log(chalk.cyan('\nFallback value:'));
+        }
+        console.log(chalk.white(fallbackValue));
+        return;
+      }
+
       // Use cached item to determine if item exists (avoids redundant CLI call)
       if (cachedItem) {
         // Item exists but field not found - suggest available fields from cached data
@@ -164,25 +196,25 @@ export function createGetCommand(
           ?.filter((f) => f.label && f.label.length > 0)
           .map((f) => f.label) || [];
         if (!quietSpinner) {
-          spinner.fail(chalk.yellow(`Field "${field}" not found on item "${name}"`));
+          spinner.fail(chalk.yellow(`Field "${field}" not found on item "${actualName}"`));
         }
 
         let errorMessage = `Field "${field}" not found.`;
         if (fields.length > 0) {
           errorMessage += ` Available fields: ${fields.join(', ')}`;
-          errorMessage += `\nTry: ops get "${name}" --field ${fields[0]}`;
+          errorMessage += `\nTry: ops get "${actualName}" --field ${fields[0]}`;
         } else {
-          errorMessage += ` Use: ops inspect "${name}" to see available fields.`;
+          errorMessage += ` Use: ops inspect "${actualName}" to see available fields.`;
         }
         throw new OpError(errorMessage, 1);
       }
 
       if (!quietSpinner) {
-        spinner.fail(chalk.yellow(`Secret "${name}" not found in vault "${vault}"`));
+        spinner.fail(chalk.yellow(`Secret "${actualName}" not found in vault "${vault}"`));
       }
 
       // Suggest similar names
-      const similar = deps.findSimilarItems(name, vault);
+      const similar = deps.findSimilarItems(actualName, vault);
       if (similar.length > 0 && !noInput) {
         console.log(chalk.cyan('\nDid you mean?'));
         for (const suggestion of similar) {
@@ -222,14 +254,14 @@ export function createGetCommand(
       ]);
 
       const storeSpinner = deps.createSpinner('Storing secret in 1Password...', quietSpinner);
-      deps.setSecret(name, valueAnswer.value, vault, field);
+      deps.setSecret(actualName, valueAnswer.value, vault, field);
       if (!quietSpinner) {
         storeSpinner.succeed(chalk.green('Secret stored successfully!'));
       }
 
       if (!quiet) {
         console.log(chalk.cyan('\nYou can retrieve it anytime with:'));
-        console.log(chalk.white(`  ops get ${name}`));
+        console.log(chalk.white(`  ops get ${actualName}`));
       }
     } catch (error) {
       if (error instanceof OpError) {

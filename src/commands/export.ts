@@ -1,6 +1,7 @@
 import { writeFileSync, existsSync } from 'fs';
 import { dirname } from 'path';
 import chalk from 'chalk';
+import picomatch from 'picomatch';
 import { listItems, getItem, checkOpCli } from '../utils/op.js';
 import {
   applyColorConfig,
@@ -58,16 +59,25 @@ export function createExportCommand(deps: ExportDeps = defaultDeps) {
         }
       }
 
+      // Compile filter pattern if provided
+      const filterMatcher = options.filter ? picomatch(options.filter, { nocase: true }) : null;
+
       const outputToStdout = !options.output || options.output === '-';
       const quietSpinner = quiet || outputToStdout || format === 'json';
       const spinner = deps.createSpinner(`Exporting secrets from vault "${vault}"...`, quietSpinner);
 
       // Get all items from vault
-      const items = deps.listItems(vault);
+      let items = deps.listItems(vault);
+
+      // Apply filter if specified
+      if (filterMatcher) {
+        items = items.filter(item => filterMatcher(item.title));
+      }
 
       if (items.length === 0) {
         if (!quietSpinner) {
-          spinner.warn(chalk.yellow('No items found in vault.'));
+          const filterMsg = options.filter ? ` matching "${options.filter}"` : '';
+          spinner.warn(chalk.yellow(`No items found in vault${filterMsg}.`));
         }
         return;
       }

@@ -65,6 +65,9 @@ export TOKEN=$(ops get GITHUB_TOKEN --plain)
 
 # JSON output
 ops get GITHUB_TOKEN --json
+
+# Fallback value if secret not found
+ops get GITHUB_TOKEN=default_value
 ```
 
 ### Store a secret
@@ -85,6 +88,28 @@ cat token.txt | ops set GITHUB_TOKEN --value -
 
 # Specify vault
 ops set GITHUB_TOKEN --vault Work
+
+# Force overwrite without confirmation (-y is alias for --force)
+ops set GITHUB_TOKEN --value "new_value" -y
+```
+
+### Get multiple secrets
+
+```bash
+# Get multiple secrets at once
+ops get-many API_KEY DB_PASSWORD REDIS_URL
+
+# Shorthand alias
+ops gets API_KEY DB_PASSWORD
+
+# Read secret names from stdin (one per line)
+echo -e "API_KEY\nDB_PASSWORD" | ops gets -
+
+# Or from a file
+ops gets - < secrets.txt
+
+# Output as JSON
+ops gets API_KEY DB_PASSWORD --json
 ```
 
 ### Copy a secret to the clipboard
@@ -151,6 +176,10 @@ ops export --json
 
 # From specific vault
 ops export --vault Work --output work.env
+
+# Filter by glob pattern
+ops export --filter "API_*"
+ops export --filter "*_TOKEN" --output tokens.env
 ```
 
 ### Import secrets
@@ -164,6 +193,10 @@ ops import .env --vault Work
 
 # Preview what would be imported without making changes
 ops import .env --dry-run
+
+# Import from stdin
+cat .env | ops import -
+echo "NEW_SECRET=value" | ops import
 ```
 
 ### Run a command with injected secrets
@@ -285,6 +318,18 @@ ops vaults
 # JSON output
 ops vaults --json
 ```
+
+### Check session status
+
+```bash
+# Show current 1Password account and session info
+ops whoami
+
+# JSON output for scripting
+ops whoami --json
+```
+
+Shows your signed-in email, account URL, default vault/field settings, and accessible vaults.
 
 ### Shell Completion
 
@@ -442,18 +487,20 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `get <name>` | Get a secret | `-v, --vault`, `-f, --field`, `--plain`, `--json`, `-s, --silent`, `--no-input` |
-| `set <name>` | Store a secret | `-v, --vault`, `-f, --field`, `--value`, `--value-file`, `--force`, `--no-input` |
+| `get <name>` | Get a secret (supports `KEY=fallback`) | `-v, --vault`, `-f, --field`, `--plain`, `--json`, `-s, --silent`, `--no-input` |
+| `get-many <names...>` | Get multiple secrets (alias: `gets`) | `-v, --vault`, `-f, --field`, `--json`, `--plain` |
+| `set <name>` | Store a secret (supports `KEY=VALUE`) | `-v, --vault`, `-f, --field`, `--value`, `--value-file`, `-y, --force`, `--no-input` |
 | `copy <name>` | Copy a secret to clipboard | `-v, --vault`, `-f, --field`, `--ttl`, `-q, --quiet` |
 | `list` | List vault items | `-v, --vault`, `-s, --search`, `-j, --json`, `--plain`, `--favorites` |
 | `search <query>` | Search items by title | `-v, --vault`, `-j, --json`, `--plain` |
 | `favorites` | List favorite items | `-v, --vault`, `-j, --json`, `--plain` |
-| `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-j, --json`, `-o, --output` |
-| `import <file>` | Import secrets from .env | `-v, --vault`, `--dry-run` |
+| `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-j, --json`, `-o, --output`, `--filter` |
+| `import [file]` | Import secrets from .env or stdin | `-v, --vault`, `--dry-run` |
 | `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file`, `--verbose` |
 | `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
 | `inspect <name>` | Show available fields for a secret | `-v, --vault`, `-j, --json` |
 | `vaults` | List available vaults | `-j, --json` |
+| `whoami` | Show session and account info | `-j, --json`, `-q, --quiet` |
 | `completion [shell]` | Generate shell completion script | Shells: `bash`, `zsh`, `fish` |
 
 ## Development

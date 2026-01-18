@@ -15,6 +15,7 @@ import {
   resolveVault,
 } from '../utils/cli.js';
 import { OpError } from '../utils/types.js';
+import { readLinesFromInput } from '../utils/io.js';
 
 export interface GetManyOptions {
   vault?: string;
@@ -126,8 +127,14 @@ export function createGetManyCommand(
     options: GetManyOptions
   ): Promise<void> {
     try {
+      // Support stdin: if first arg is "-", read names from stdin
+      let secretNames = names;
+      if (names.length === 1 && names[0] === '-') {
+        secretNames = readLinesFromInput('-');
+      }
+
       // Validate at least one name provided
-      if (!names || names.length === 0) {
+      if (!secretNames || secretNames.length === 0) {
         throw new OpError('At least one secret name is required.', 2);
       }
 
@@ -161,13 +168,13 @@ export function createGetManyCommand(
 
       const quietSpinner = quiet || outputMode !== 'human';
       const spinner = deps.createSpinner(
-        `Fetching ${names.length} secret${names.length > 1 ? 's' : ''} from 1Password...`,
+        `Fetching ${secretNames.length} secret${secretNames.length > 1 ? 's' : ''} from 1Password...`,
         quietSpinner
       );
 
       // Fetch all secrets in parallel
       const results = await fetchSecretsParallel(
-        names,
+        secretNames,
         vault,
         field,
         parallelism,
@@ -182,7 +189,7 @@ export function createGetManyCommand(
         if (!quietSpinner) {
           spinner.fail(
             chalk.yellow(
-              `Failed to retrieve ${failures.length} of ${names.length} secrets`
+              `Failed to retrieve ${failures.length} of ${secretNames.length} secrets`
             )
           );
         }
@@ -204,7 +211,7 @@ export function createGetManyCommand(
         if (failures.length > 0) {
           spinner.warn(
             chalk.yellow(
-              `Retrieved ${successes.length} of ${names.length} secrets (${failures.length} failed)`
+              `Retrieved ${successes.length} of ${secretNames.length} secrets (${failures.length} failed)`
             )
           );
         } else {
