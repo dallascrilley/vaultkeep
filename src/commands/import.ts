@@ -96,7 +96,8 @@ export function createImportCommand(
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Unable to parse env file.';
-        throw new OpError(`Failed to parse "${filePath}": ${message}`, 2);
+        const source = readFromStdin ? 'stdin' : `"${filePath}"`;
+        throw new OpError(`Failed to parse ${source}: ${message}`, 2);
       }
       const entries = Object.entries(parsed);
 

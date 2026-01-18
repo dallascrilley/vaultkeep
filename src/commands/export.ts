@@ -69,9 +69,16 @@ export function createExportCommand(deps: ExportDeps = defaultDeps) {
       // Get all items from vault
       let items = deps.listItems(vault);
 
-      // Apply filter if specified
+      // Helper to convert title to env var format
+      const toEnvKey = (title: string): string =>
+        title
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '_')
+          .replace(/_+/g, '_');
+
+      // Apply filter if specified (matches converted env var names, not raw titles)
       if (filterMatcher) {
-        items = items.filter(item => filterMatcher(item.title));
+        items = items.filter(item => filterMatcher(toEnvKey(item.title)));
       }
 
       if (items.length === 0) {
@@ -95,13 +102,7 @@ export function createExportCommand(deps: ExportDeps = defaultDeps) {
         );
 
         if (secretField?.value) {
-          // Convert title to env var format (uppercase, replace spaces/hyphens with underscore)
-          const envKey = item.title
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '_')
-            .replace(/_+/g, '_');
-
-          secrets[envKey] = secretField.value;
+          secrets[toEnvKey(item.title)] = secretField.value;
         }
       }
 
