@@ -254,6 +254,10 @@ test('suggests similar secret names when not found', async () => {
     itemExists: () => false,
     getItemFields: () => [],
     findSimilarItems: () => ['GITHUB_TOKEN', 'GITHUB_PAT'],
+    findSimilarItemsWithScore: () => [
+      { title: 'GITHUB_TOKEN', score: 85 },
+      { title: 'GITHUB_PAT', score: 72 },
+    ],
     getItem: () => null,
     getDefaultFieldForCategory: (cat: string) => 'password',
     prompt: async () => ({ create: false }),
