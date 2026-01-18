@@ -7,7 +7,7 @@ ops-cli (`ops` command) is a 1Password CLI wrapper providing smart secret retrie
 ## Tech Stack
 
 - **Language**: TypeScript 5.x (strict mode)
-- **Runtime**: Node.js 18+
+- **Runtime**: Node.js 22+
 - **Package Manager**: npm
 - **Test Framework**: Node.js native test runner (`node:test`)
 - **Build**: TypeScript compiler (`tsc`)

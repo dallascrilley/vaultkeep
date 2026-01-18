@@ -259,7 +259,7 @@ node dist/index.js get TEST_SECRET
 
 - **TypeScript strict mode** enabled
 - **ES modules** (`type: "module"` in package.json)
-- **Node 18+** required
+- **Node 22+** required
 - **Async/await** over callbacks/promises.then()
 
 ### Debugging
@@ -479,7 +479,7 @@ node --inspect-brk dist/index.js get SECRET
 ### Planned Features
 - [ ] Secret templates for common patterns
 - [ ] Diff command to compare secrets between vaults/environments
-- [ ] Upgrade to Node 22 native APIs
+- [x] Upgrade to Node 22 native APIs
 - [ ] Template-based export (`.env.template`)
 - [ ] Encrypted local cache (optional)
 
