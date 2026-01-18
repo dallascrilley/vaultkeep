@@ -33,6 +33,15 @@ export async function setCommand(
       throw new OpError('Secret name cannot be empty.', 2);
     }
 
+    // Parse KEY=VALUE format if provided
+    let actualName = name;
+    let inlineValue: string | undefined;
+    const eqIndex = name.indexOf('=');
+    if (eqIndex > 0) {
+      actualName = name.substring(0, eqIndex);
+      inlineValue = name.substring(eqIndex + 1);
+    }
+
     checkOpCli();
 
     if (options.value && options.valueFile) {
@@ -52,7 +61,7 @@ export async function setCommand(
     applyColorConfig(noColor);
 
     // Check if secret already exists
-    const existing = getSecret(name, vault, field);
+    const existing = getSecret(actualName, vault, field);
 
     if (existing && !options.force) {
       if (!canPrompt) {
@@ -64,7 +73,7 @@ export async function setCommand(
           type: 'confirm',
           name: 'overwrite',
           message: chalk.yellow(
-            `Secret "${name}" already exists. Overwrite it?`
+            `Secret "${actualName}" already exists. Overwrite it?`
           ),
           default: false,
         },
@@ -76,8 +85,8 @@ export async function setCommand(
       }
     }
 
-    // Get value from option, file, stdin, or prompt
-    let value = options.value;
+    // Get value from inline KEY=VALUE, option, file, stdin, or prompt
+    let value = inlineValue ?? options.value;
 
     if (options.valueFile) {
       value = readValueFromInput(options.valueFile);
@@ -104,12 +113,12 @@ export async function setCommand(
 
     // Store the secret
     const spinner = createSpinner('Storing secret in 1Password...', quiet);
-    setSecret(name, value!, vault, field);
+    setSecret(actualName, value!, vault, field);
     spinner.succeed(chalk.green('Secret stored successfully!'));
 
     if (!quiet) {
       console.log(chalk.cyan('\nRetrieve it with:'));
-      console.log(chalk.white(`  ops get ${name}`));
+      console.log(chalk.white(`  ops get ${actualName}`));
     }
   } catch (error) {
     if (error instanceof OpError) {
