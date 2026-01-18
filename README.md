@@ -76,6 +76,9 @@ ops set GITHUB_TOKEN
 # Pass value directly
 ops set GITHUB_TOKEN --value "ghp_xxxxxxxxxxxx"
 
+# Inline KEY=VALUE format (quick one-liner)
+ops set GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+
 # Read value from file or stdin
 ops set GITHUB_TOKEN --value-file ~/.secrets/github_token
 cat token.txt | ops set GITHUB_TOKEN --value -
