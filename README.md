@@ -358,9 +358,9 @@ Features:
 - Dynamic item name completion (from 1Password)
 - Field name suggestions
 
-### Smart suggestions
+### Smart suggestions & fuzzy matching
 
-When a secret or field isn't found, ops provides helpful suggestions:
+When a secret or field isn't found, ops provides helpful suggestions and interactive fuzzy matching:
 
 ```bash
 # If field doesn't exist, suggests available fields
@@ -369,11 +369,19 @@ Error: Field "token" not found
 Available fields: password, username, otp
 Try: ops get "GitHub PAT" --field password
 
-# If secret doesn't exist, suggests similar names
+# If secret doesn't exist, fuzzy matching finds similar names
 $ ops get "GutHub PAT"
-Error: Secret "GutHub PAT" not found
-Did you mean: GitHub PAT, GitLab PAT
+Secret "GutHub PAT" not found in vault "Private"
+? Did you mean one of these?
+❯ GitHub PAT (85% match)
+  GitLab PAT (72% match)
+  None of these - create new secret
+  Cancel
+
+# Select a match to retrieve that secret instead
 ```
+
+The fuzzy matching uses Levenshtein distance combined with substring and word overlap heuristics for accurate suggestions.
 
 The clipboard `copy` command also confirms when it clears the clipboard after the TTL expires.
 

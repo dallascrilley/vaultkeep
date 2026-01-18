@@ -1,6 +1,7 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, getItem, getDefaultFieldForCategory } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, findSimilarItemsWithScore, getItem, getDefaultFieldForCategory } from '../utils/op.js';
+import type { SimilarItem } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -29,6 +30,7 @@ export interface GetDependencies {
   itemExists: typeof itemExists;
   getItemFields: typeof getItemFields;
   findSimilarItems: typeof findSimilarItems;
+  findSimilarItemsWithScore: typeof findSimilarItemsWithScore;
   getItem: typeof getItem;
   getDefaultFieldForCategory: typeof getDefaultFieldForCategory;
   prompt: typeof inquirer.prompt;
@@ -47,6 +49,7 @@ const defaultDependencies: GetDependencies = {
   itemExists,
   getItemFields,
   findSimilarItems,
+  findSimilarItemsWithScore,
   getItem,
   getDefaultFieldForCategory,
   prompt: inquirer.prompt,
@@ -110,7 +113,7 @@ export function createGetCommand(
       const quiet = options.quiet === true || envQuiet;
       const envNoInput = deps.resolveBooleanOption(undefined, 'OPS_NO_INPUT');
       const envNoColor = deps.resolveBooleanOption(undefined, 'OPS_NO_COLOR');
-      const outputMode = options.json
+      const outputMode: 'json' | 'plain' | 'human' = options.json
         ? 'json'
         : options.plain || options.silent
         ? 'plain'
@@ -213,16 +216,77 @@ export function createGetCommand(
         spinner.fail(chalk.yellow(`Secret "${actualName}" not found in vault "${vault}"`));
       }
 
-      // Suggest similar names
-      const similar = deps.findSimilarItems(actualName, vault);
-      if (similar.length > 0 && !noInput) {
+      const canPrompt = !noInput && deps.isInteractiveInput();
+
+      // Find similar items with scores for fuzzy matching
+      const similarItems = deps.findSimilarItemsWithScore(actualName, vault, 5);
+
+      // If we have high-confidence matches (score > 60) and can prompt, offer selection
+      const goodMatches = similarItems.filter(item => item.score > 60);
+
+      if (goodMatches.length > 0 && canPrompt) {
+        // Build choices for fuzzy match selection
+        const choices = goodMatches.map(item => ({
+          name: `${item.title} ${chalk.gray(`(${Math.round(item.score)}% match)`)}`,
+          value: item.title,
+        }));
+        choices.push({ name: chalk.gray('None of these - create new secret'), value: '__create__' });
+        choices.push({ name: chalk.gray('Cancel'), value: '__cancel__' });
+
+        const { selected } = await deps.prompt([
+          {
+            type: 'list',
+            name: 'selected',
+            message: 'Did you mean one of these?',
+            choices,
+          },
+        ]);
+
+        if (selected === '__cancel__') {
+          console.log(chalk.gray('Operation cancelled.'));
+          return;
+        }
+
+        if (selected !== '__create__') {
+          // User selected a similar item - fetch it
+          const fetchSpinner = deps.createSpinner(`Fetching "${selected}"...`, quietSpinner);
+          const selectedSecret = deps.getSecret(selected, vault, field);
+
+          if (selectedSecret !== null) {
+            if (!quietSpinner) {
+              fetchSpinner.succeed(chalk.green(`Retrieved "${selected}"!`));
+            }
+
+            // Check output format using options (not narrowed outputMode)
+            if (options.json) {
+              console.log(JSON.stringify({ name: selected, vault, field, value: selectedSecret, fuzzyMatch: true }, null, 2));
+              return;
+            }
+
+            if (options.plain || options.silent) {
+              console.log(selectedSecret);
+              return;
+            }
+
+            if (!quiet) {
+              console.log(chalk.cyan('\nSecret value:'));
+            }
+            console.log(chalk.white(selectedSecret));
+            return;
+          }
+
+          // If fetch failed, fall through to create flow
+          if (!quietSpinner) {
+            fetchSpinner.fail(chalk.yellow(`Could not retrieve "${selected}"`));
+          }
+        }
+      } else if (similarItems.length > 0 && !noInput) {
+        // Show suggestions without interactive selection (low confidence or non-interactive hints)
         console.log(chalk.cyan('\nDid you mean?'));
-        for (const suggestion of similar) {
-          console.log(chalk.white(`  - ${suggestion}`));
+        for (const item of similarItems.slice(0, 3)) {
+          console.log(chalk.white(`  - ${item.title}`));
         }
       }
-
-      const canPrompt = !noInput && deps.isInteractiveInput();
 
       if (!canPrompt) {
         throw new OpError('Secret not found. Use ops set to create it.', 1);

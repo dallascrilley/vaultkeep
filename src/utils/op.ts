@@ -588,49 +588,104 @@ export function searchItems(query: string, vault: string = 'Private'): OpItem[] 
 }
 
 /**
- * Find similar item names using simple string matching
+ * Calculate Levenshtein edit distance between two strings
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+
+  // Initialize first row and column
+  for (let i = 0; i <= a.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+  // Fill the matrix
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,      // deletion
+        matrix[i][j - 1] + 1,      // insertion
+        matrix[i - 1][j - 1] + cost // substitution
+      );
+    }
+  }
+
+  return matrix[a.length][b.length];
+}
+
+/**
+ * Calculate similarity score (0-100) based on Levenshtein distance
+ */
+function similarityScore(query: string, target: string): number {
+  const queryLower = query.toLowerCase();
+  const targetLower = target.toLowerCase();
+
+  // Exact match
+  if (queryLower === targetLower) return 100;
+
+  // Calculate base Levenshtein score
+  const distance = levenshteinDistance(queryLower, targetLower);
+  const maxLen = Math.max(queryLower.length, targetLower.length);
+  const levenshteinScore = Math.max(0, 100 - (distance / maxLen) * 100);
+
+  // Bonus for substring matches
+  let substringBonus = 0;
+  if (targetLower.includes(queryLower) || queryLower.includes(targetLower)) {
+    substringBonus = 30;
+  }
+
+  // Bonus for word overlap
+  const queryWords = queryLower.split(/[_\-\s]+/);
+  const targetWords = targetLower.split(/[_\-\s]+/);
+  let wordBonus = 0;
+  for (const qw of queryWords) {
+    if (qw.length < 2) continue;
+    for (const tw of targetWords) {
+      if (tw.includes(qw) || qw.includes(tw)) {
+        wordBonus += 15;
+      }
+    }
+  }
+
+  return Math.min(100, levenshteinScore + substringBonus + wordBonus);
+}
+
+export interface SimilarItem {
+  title: string;
+  score: number;
+}
+
+/**
+ * Find similar item names using fuzzy matching (Levenshtein + heuristics)
  */
 export function findSimilarItems(
   query: string,
   vault: string = 'Private',
   maxResults: number = 3
 ): string[] {
+  return findSimilarItemsWithScore(query, vault, maxResults).map(item => item.title);
+}
+
+/**
+ * Find similar items with their similarity scores
+ */
+export function findSimilarItemsWithScore(
+  query: string,
+  vault: string = 'Private',
+  maxResults: number = 5
+): SimilarItem[] {
   const items = listItems(vault);
-  const queryLower = query.toLowerCase();
 
   // Score items by similarity
   const scored = items
-    .map((item) => {
-      const titleLower = item.title.toLowerCase();
-      let score = 0;
-
-      // Exact substring match
-      if (titleLower.includes(queryLower) || queryLower.includes(titleLower)) {
-        score += 50;
-      }
-
-      // Word overlap
-      const queryWords = queryLower.split(/[_\-\s]+/);
-      const titleWords = titleLower.split(/[_\-\s]+/);
-      for (const qw of queryWords) {
-        for (const tw of titleWords) {
-          if (tw.includes(qw) || qw.includes(tw)) {
-            score += 20;
-          }
-        }
-      }
-
-      // Character overlap ratio
-      const commonChars = [...queryLower].filter((c) => titleLower.includes(c)).length;
-      score += Math.floor((commonChars / queryLower.length) * 30);
-
-      return { title: item.title, score };
-    })
-    .filter((item) => item.score > 20)
+    .map((item) => ({
+      title: item.title,
+      score: similarityScore(query, item.title),
+    }))
+    .filter((item) => item.score > 30) // Minimum threshold for relevance
     .sort((a, b) => b.score - a.score)
     .slice(0, maxResults);
 
-  return scored.map((item) => item.title);
+  return scored;
 }
 
 export interface OpVault {
