@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.9.1...v1.10.0) (2026-01-18)
+
+
+### Features
+
+* **set:** support KEY=VALUE inline format ([96474cb](https://github.com/dallascrilley/op-cli-helper/commit/96474cb13901e3de9b6f3908699f946a5cb37945))
+
 ## [1.9.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.9.0...v1.9.1) (2026-01-17)
 
 
