@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.11.0...v1.11.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* export filter now matches env var names, not raw titles ([50b5552](https://github.com/dallascrilley/op-cli-helper/commit/50b55523c71fc70391f70bb26e293c4465e62fc2))
+
 # [1.11.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.10.0...v1.11.0) (2026-01-18)
 
 
