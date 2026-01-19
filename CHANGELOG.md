@@ -1,3 +1,10 @@
+## [1.12.2](https://github.com/dallascrilley/op-cli-helper/compare/v1.12.1...v1.12.2) (2026-01-19)
+
+
+### Bug Fixes
+
+* add missing picomatch dependency for export command ([b526c90](https://github.com/dallascrilley/op-cli-helper/commit/b526c90c8b2d9ad693bd07d6ac954d1004914c69))
+
 ## [1.12.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.12.0...v1.12.1) (2026-01-18)
 
 
