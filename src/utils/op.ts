@@ -138,6 +138,33 @@ export function matchQueryToText(query: string, text: string): boolean {
   return tokens.every((token) => haystack.includes(` ${token} `));
 }
 
+export function buildItemSearchText(item: OpItem, fields?: OpField[]): string {
+  const parts: string[] = [];
+
+  if (item.title) parts.push(item.title);
+  if (item.category) parts.push(item.category);
+  if (item.tags && item.tags.length > 0) parts.push(item.tags.join(' '));
+  if (item.urls && item.urls.length > 0) {
+    parts.push(
+      item.urls
+        .map((url) => [url.label, url.href].filter(Boolean).join(' '))
+        .join(' ')
+    );
+  }
+
+  if (fields && fields.length > 0) {
+    for (const field of fields) {
+      if (field.label) parts.push(field.label);
+      if (field.id) parts.push(field.id);
+      if (field.value !== undefined && field.type !== 'CONCEALED') {
+        parts.push(String(field.value));
+      }
+    }
+  }
+
+  return parts.join(' ').trim();
+}
+
 function matchesFieldName(field: OpField, name: string): boolean {
   const target = normalizeFieldName(name);
   return (
@@ -382,6 +409,27 @@ export function listItems(vault: string = 'Private'): OpItem[] {
     if (error.stderr?.includes('vault')) {
       throw new OpError(`Vault "${vault}" not found`, 1);
     }
+    throw new OpError(`Failed to list items: ${error.message}`, 1);
+  }
+}
+
+/**
+ * List items across all vaults
+ */
+export function listItemsAll(): OpItem[] {
+  const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
+
+  try {
+    return withRetrySync(() => {
+      const output = execFileSync(
+        'op',
+        ['item', 'list', '--format=json'],
+        { encoding: 'utf-8', stdio: 'pipe', env }
+      );
+      return JSON.parse(output);
+    }, retryOpts);
+  } catch (error: any) {
     throw new OpError(`Failed to list items: ${error.message}`, 1);
   }
 }
@@ -686,11 +734,27 @@ export function listFavorites(vault: string = 'Private'): OpItem[] {
  * Search for items by title
  */
 export function searchItems(query: string, vault: string = 'Private'): OpItem[] {
-  const items = listItems(vault);
-  if (!query.trim()) return [];
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
 
+  const env = getOpEnv();
+  try {
+    const output = execFileSync(
+      'op',
+      ['item', 'list', '--vault', vault, '--query', trimmedQuery, '--format=json'],
+      { encoding: 'utf-8', stdio: 'pipe', env }
+    );
+    const serverMatches = JSON.parse(output) as OpItem[];
+    if (serverMatches.length > 0) {
+      return serverMatches;
+    }
+  } catch {
+    // Ignore server-side query errors and fall back to local matching.
+  }
+
+  const items = listItems(vault);
   const titleMatches = items.filter((item) =>
-    matchQueryToText(query, item.title)
+    matchQueryToText(trimmedQuery, item.title)
   );
 
   if (titleMatches.length > 0) {
@@ -705,11 +769,56 @@ export function searchItems(query: string, vault: string = 'Private'): OpItem[] 
     const itemRef = item.id || item.title;
     const fullItem = getItem(itemRef, vault);
     const fields = fullItem?.fields ?? [];
-    const fieldText = fields
-      .map((field) => [field.label, field.id, field.value].filter(Boolean).join(' '))
-      .join(' ');
-    const haystack = `${fullItem?.title ?? item.title} ${fieldText}`.trim();
-    if (haystack && matchQueryToText(query, haystack)) {
+    const haystack = buildItemSearchText(fullItem ?? item, fields);
+    if (haystack && matchQueryToText(trimmedQuery, haystack)) {
+      deepMatches.push(fullItem ?? item);
+    }
+  }
+
+  return deepMatches;
+}
+
+/**
+ * Search across all vaults
+ */
+export function searchItemsAll(query: string): OpItem[] {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
+
+  const env = getOpEnv();
+  try {
+    const output = execFileSync(
+      'op',
+      ['item', 'list', '--query', trimmedQuery, '--format=json'],
+      { encoding: 'utf-8', stdio: 'pipe', env }
+    );
+    const serverMatches = JSON.parse(output) as OpItem[];
+    if (serverMatches.length > 0) {
+      return serverMatches;
+    }
+  } catch {
+    // Ignore server-side query errors and fall back to local matching.
+  }
+
+  const items = listItemsAll();
+  const titleMatches = items.filter((item) =>
+    matchQueryToText(trimmedQuery, item.title)
+  );
+
+  if (titleMatches.length > 0) {
+    return titleMatches;
+  }
+
+  const maxFieldItems = 200;
+  const candidates = items.slice(0, maxFieldItems);
+  const deepMatches: OpItem[] = [];
+
+  for (const item of candidates) {
+    const itemRef = item.id || item.title;
+    const fullItem = getItem(itemRef);
+    const fields = fullItem?.fields ?? [];
+    const haystack = buildItemSearchText(fullItem ?? item, fields);
+    if (haystack && matchQueryToText(trimmedQuery, haystack)) {
       deepMatches.push(fullItem ?? item);
     }
   }
