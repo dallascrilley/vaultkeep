@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, findSimilarItemsWithScore, getItem, getDefaultFieldForCategory } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, findSimilarItemsWithScore, getItem, getDefaultFieldForCategory, resolveSecretFieldForItem } from '../utils/op.js';
 import type { SimilarItem } from '../utils/op.js';
 import {
   applyColorConfig,
@@ -33,6 +33,7 @@ export interface GetDependencies {
   findSimilarItemsWithScore: typeof findSimilarItemsWithScore;
   getItem: typeof getItem;
   getDefaultFieldForCategory: typeof getDefaultFieldForCategory;
+  resolveSecretFieldForItem: typeof resolveSecretFieldForItem;
   prompt: typeof inquirer.prompt;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -52,6 +53,7 @@ const defaultDependencies: GetDependencies = {
   findSimilarItemsWithScore,
   getItem,
   getDefaultFieldForCategory,
+  resolveSecretFieldForItem,
   prompt: inquirer.prompt,
   applyColorConfig,
   createSpinner,
@@ -98,8 +100,9 @@ export function createGetCommand(
       const cachedItem = deps.getItem(actualName, vault);
       
       // Smart field detection: if no field specified, try to detect from item category
+      const hasExplicitField = Boolean(options.field);
       let field: string;
-      if (options.field) {
+      if (hasExplicitField) {
         field = deps.resolveField(options.field);
       } else {
         if (cachedItem?.category) {
@@ -107,6 +110,10 @@ export function createGetCommand(
         } else {
           field = deps.resolveField(undefined);
         }
+      }
+
+      if (!hasExplicitField && cachedItem?.fields) {
+        field = deps.resolveSecretFieldForItem(cachedItem.fields, field).field;
       }
       
       const envQuiet = deps.resolveBooleanOption(undefined, 'OPS_QUIET');
@@ -129,11 +136,11 @@ export function createGetCommand(
       // Try to extract secret from cached item first (avoids second CLI call)
       let secret: string | null = null;
       if (cachedItem?.fields) {
-        const fieldData = cachedItem.fields.find(
-          (f) => f.label === field || f.id === field
-        );
-        if (fieldData?.value) {
-          secret = fieldData.value;
+        const resolvedField = deps.resolveSecretFieldForItem(cachedItem.fields, field, {
+          allowCredentialFallback: !hasExplicitField,
+        });
+        if (resolvedField.fieldData?.value) {
+          secret = resolvedField.fieldData.value;
         }
       }
       

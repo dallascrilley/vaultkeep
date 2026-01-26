@@ -21,7 +21,11 @@ function buildGetCommand(overrides: Record<string, any> = {}) {
       if (itemExists) {
         return {
           category: itemCategory || 'LOGIN',
-          fields: itemFields.map(label => ({ label, value: 'mock-value' })),
+          fields: itemFields.map((label) => ({
+            id: label,
+            label,
+            value: 'mock-value',
+          })),
         };
       }
       return null;
@@ -59,9 +63,14 @@ afterEach(() => {
 
 test('uses smart field detection for API_CREDENTIAL items', async () => {
   itemCategory = 'API_CREDENTIAL';
+  itemFields = ['credential', 'notes'];
   let usedField: string | null = null;
   
   const getCommand = buildGetCommand({
+    getItem: () => ({
+      category: 'API_CREDENTIAL',
+      fields: itemFields.map((label) => ({ id: label, label })),
+    }),
     getSecret: (_name: string, _vault: string, field: string) => {
       usedField = field;
       return 'my-api-key';
@@ -79,6 +88,69 @@ test('uses smart field detection for API_CREDENTIAL items', async () => {
   assert.equal(usedField, 'credential', 'Should use credential field for API_CREDENTIAL items');
 
   logMock.mock.restore();
+});
+
+test('falls back to password field for API_CREDENTIAL items when credential is missing', async () => {
+  itemCategory = 'API_CREDENTIAL';
+  itemFields = ['password', 'notes'];
+  let usedField: string | null = null;
+
+  const getCommand = buildGetCommand({
+    getItem: () => ({
+      category: 'API_CREDENTIAL',
+      fields: itemFields.map((label) => ({ id: label, label })),
+    }),
+    getSecret: (_name: string, _vault: string, field: string) => {
+      usedField = field;
+      return 'api-key-from-password';
+    },
+  });
+
+  await getCommand('My API Key', {});
+
+  assert.equal(usedField, 'password', 'Should fall back to password field');
+});
+
+test('falls back to notes field for API_CREDENTIAL items when credential and password are missing', async () => {
+  itemCategory = 'API_CREDENTIAL';
+  itemFields = ['notesPlain', 'username'];
+  let usedField: string | null = null;
+
+  const getCommand = buildGetCommand({
+    getItem: () => ({
+      category: 'API_CREDENTIAL',
+      fields: itemFields.map((label) => ({ id: label, label })),
+    }),
+    getSecret: (_name: string, _vault: string, field: string) => {
+      usedField = field;
+      return 'api-key-from-notes';
+    },
+  });
+
+  await getCommand('My API Key', {});
+
+  assert.equal(usedField, 'notesPlain', 'Should fall back to notesPlain field');
+});
+
+test('uses *_api_key custom field for API_CREDENTIAL items when present', async () => {
+  itemCategory = 'API_CREDENTIAL';
+  itemFields = ['service_api_key', 'username'];
+  let usedField: string | null = null;
+
+  const getCommand = buildGetCommand({
+    getItem: () => ({
+      category: 'API_CREDENTIAL',
+      fields: itemFields.map((label) => ({ id: label, label })),
+    }),
+    getSecret: (_name: string, _vault: string, field: string) => {
+      usedField = field;
+      return 'api-key-from-custom';
+    },
+  });
+
+  await getCommand('My API Key', {});
+
+  assert.equal(usedField, 'service_api_key', 'Should use custom *_api_key field');
 });
 
 test('uses password field for LOGIN items', async () => {

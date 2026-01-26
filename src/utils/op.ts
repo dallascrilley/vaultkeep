@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import { OpItem, OpError } from './types.js';
+import { OpItem, OpField, OpError } from './types.js';
 import { withRetrySync, withRetry, RetryOptions, isTransientError } from './retry.js';
 
 const execFileAsync = promisify(execFile);
@@ -115,6 +115,74 @@ export function getDefaultFieldForCategory(category: string): string {
     SECURE_NOTE: 'notesPlain',
   };
   return categoryDefaults[category] || 'password';
+}
+
+function normalizeFieldName(value?: string): string {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function matchesFieldName(field: OpField, name: string): boolean {
+  const target = normalizeFieldName(name);
+  return (
+    normalizeFieldName(field.id) === target ||
+    normalizeFieldName(field.label) === target
+  );
+}
+
+function findFieldByName(fields: OpField[] | undefined, name: string): OpField | undefined {
+  if (!fields) return undefined;
+  return fields.find((field) => matchesFieldName(field, name));
+}
+
+function findNotesField(fields: OpField[] | undefined): OpField | undefined {
+  if (!fields) return undefined;
+  return fields.find((field) => {
+    const id = normalizeFieldName(field.id);
+    const label = normalizeFieldName(field.label);
+    return id === 'notesplain' || label === 'notes';
+  });
+}
+
+function findApiKeyField(fields: OpField[] | undefined): OpField | undefined {
+  if (!fields) return undefined;
+  return fields.find((field) => {
+    const id = normalizeFieldName(field.id);
+    const label = normalizeFieldName(field.label);
+    return /_api_(key|token)$/.test(id) || /_api_(key|token)$/.test(label);
+  });
+}
+
+export function resolveSecretFieldForItem(
+  fields: OpField[] | undefined,
+  defaultField: string,
+  options: { allowCredentialFallback?: boolean } = {}
+): { field: string; fieldData?: OpField } {
+  const directMatch = findFieldByName(fields, defaultField);
+  if (directMatch) {
+    return {
+      field: directMatch.id || directMatch.label || defaultField,
+      fieldData: directMatch,
+    };
+  }
+
+  const allowFallback = options.allowCredentialFallback ?? true;
+  if (!allowFallback || normalizeFieldName(defaultField) !== 'credential') {
+    return { field: defaultField };
+  }
+
+  const fallbackField =
+    findFieldByName(fields, 'password') ||
+    findNotesField(fields) ||
+    findApiKeyField(fields);
+
+  if (fallbackField) {
+    return {
+      field: fallbackField.id || fallbackField.label || defaultField,
+      fieldData: fallbackField,
+    };
+  }
+
+  return { field: defaultField };
 }
 
 /**

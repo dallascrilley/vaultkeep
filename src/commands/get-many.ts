@@ -6,6 +6,7 @@ import {
   getItem,
   getItemAsync,
   getDefaultFieldForCategory,
+  resolveSecretFieldForItem,
 } from '../utils/op.js';
 import {
   applyColorConfig,
@@ -36,6 +37,7 @@ export interface GetManyDependencies {
   getItem: typeof getItem;
   getItemAsync: typeof getItemAsync;
   getDefaultFieldForCategory: typeof getDefaultFieldForCategory;
+  resolveSecretFieldForItem: typeof resolveSecretFieldForItem;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
   resolveBooleanOption: typeof resolveBooleanOption;
@@ -50,6 +52,7 @@ const defaultDependencies: GetManyDependencies = {
   getItem,
   getItemAsync,
   getDefaultFieldForCategory,
+  resolveSecretFieldForItem,
   applyColorConfig,
   createSpinner,
   resolveBooleanOption,
@@ -78,6 +81,9 @@ async function fetchSecretAsync(
     const item = await deps.getItemAsync(name, vault);
     if (item?.category) {
       field = deps.getDefaultFieldForCategory(item.category);
+    }
+    if (item?.fields) {
+      field = deps.resolveSecretFieldForItem(item.fields, field).field;
     }
 
     const value = await deps.getSecretAsync(name, vault, field);
