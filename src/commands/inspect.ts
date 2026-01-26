@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { getItem, checkOpCli, findSimilarItems, getNotesValue } from '../utils/op.js';
+import { getItem, checkOpCli, findSimilarItems, getNonEmptyFields } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -19,7 +19,7 @@ export interface InspectDependencies {
   getItem: typeof getItem;
   checkOpCli: typeof checkOpCli;
   findSimilarItems: typeof findSimilarItems;
-  getNotesValue: typeof getNotesValue;
+  getNonEmptyFields: typeof getNonEmptyFields;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
   resolveBooleanOption: typeof resolveBooleanOption;
@@ -31,7 +31,7 @@ const defaultDependencies: InspectDependencies = {
   getItem,
   checkOpCli,
   findSimilarItems,
-  getNotesValue,
+  getNonEmptyFields,
   applyColorConfig,
   createSpinner,
   resolveBooleanOption,
@@ -85,18 +85,18 @@ export function createInspectCommand(
 
       spinner.succeed(chalk.green(`Found item "${name}"`));
 
-      const notesValue = deps.getNotesValue(item.fields);
+      const fieldsWithValues = deps.getNonEmptyFields(item.fields);
 
       if (options.json) {
         deps.log(JSON.stringify({
           title: item.title,
           vault: item.vault || vault,
           category: item.category,
-          notes: notesValue,
-          fields: item.fields?.map((f) => ({
+          fields: fieldsWithValues.map((f) => ({
             label: f.label,
             type: f.type,
             id: f.id,
+            value: f.value,
           })) || [],
         }, null, 2));
         return;
@@ -105,19 +105,16 @@ export function createInspectCommand(
       deps.log(chalk.cyan(`\nItem: ${chalk.white(item.title)}`));
       deps.log(chalk.cyan(`Vault: ${chalk.white(item.vault || vault)}`));
       deps.log(chalk.cyan(`Category: ${chalk.white(item.category)}`));
-      deps.log(chalk.cyan('\nNotes:'));
-      deps.log(chalk.white(notesValue ?? '(none)'));
       deps.log(chalk.cyan('\nFields:'));
 
-      if (!item.fields || item.fields.length === 0) {
+      if (fieldsWithValues.length === 0) {
         deps.log(chalk.gray('  (no fields)'));
         return;
       }
 
-      for (const field of item.fields) {
-        if (field.label) {
-          deps.log(chalk.white(`  - ${field.label} ${chalk.gray(`(${field.type})`)}`));
-        }
+      for (const field of fieldsWithValues) {
+        const label = field.label || field.id || 'field';
+        deps.log(chalk.white(`  - ${label}: ${field.value} ${chalk.gray(`(${field.type})`)}`));
       }
     } catch (error) {
       if (error instanceof OpError) {

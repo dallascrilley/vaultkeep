@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, findSimilarItemsWithScore, getItem, getDefaultFieldForCategory, resolveSecretFieldForItem, getNotesValue } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, findSimilarItemsWithScore, getItem, getDefaultFieldForCategory, resolveSecretFieldForItem, getNonEmptyFields } from '../utils/op.js';
 import type { SimilarItem } from '../utils/op.js';
 import {
   applyColorConfig,
@@ -34,7 +34,7 @@ export interface GetDependencies {
   getItem: typeof getItem;
   getDefaultFieldForCategory: typeof getDefaultFieldForCategory;
   resolveSecretFieldForItem: typeof resolveSecretFieldForItem;
-  getNotesValue: typeof getNotesValue;
+  getNonEmptyFields: typeof getNonEmptyFields;
   prompt: typeof inquirer.prompt;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -55,7 +55,7 @@ const defaultDependencies: GetDependencies = {
   getItem,
   getDefaultFieldForCategory,
   resolveSecretFieldForItem,
-  getNotesValue,
+  getNonEmptyFields,
   prompt: inquirer.prompt,
   applyColorConfig,
   createSpinner,
@@ -157,13 +157,24 @@ export function createGetCommand(
       }
 
       if (secret !== null) {
-        const notesValue = deps.getNotesValue(cachedItem?.fields);
+        const fieldsWithValues = deps.getNonEmptyFields(cachedItem?.fields);
         if (!quietSpinner) {
           spinner.succeed(chalk.green('Secret retrieved!'));
         }
 
         if (outputMode === 'json') {
-          console.log(JSON.stringify({ name: actualName, vault, field, value: secret, notes: notesValue }, null, 2));
+          console.log(JSON.stringify({
+            name: actualName,
+            vault,
+            field,
+            value: secret,
+            fields: fieldsWithValues.map((f) => ({
+              id: f.id,
+              label: f.label,
+              type: f.type,
+              value: f.value,
+            })),
+          }, null, 2));
           return;
         }
 
@@ -177,8 +188,15 @@ export function createGetCommand(
         }
         console.log(chalk.white(secret));
         if (!quiet) {
-          console.log(chalk.cyan('\nNotes:'));
-          console.log(chalk.white(notesValue ?? '(none)'));
+          console.log(chalk.cyan('\nFields:'));
+          if (fieldsWithValues.length === 0) {
+            console.log(chalk.gray('  (no fields)'));
+          } else {
+            for (const fieldEntry of fieldsWithValues) {
+              const label = fieldEntry.label || fieldEntry.id;
+              console.log(chalk.white(`  - ${label}: ${fieldEntry.value}`));
+            }
+          }
         }
         return;
       }
