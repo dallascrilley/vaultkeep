@@ -121,6 +121,23 @@ function normalizeFieldName(value?: string): string {
   return value?.trim().toLowerCase() ?? '';
 }
 
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function tokenizeSearchText(value: string): string[] {
+  const normalized = normalizeSearchText(value);
+  if (!normalized) return [];
+  return normalized.split(' ').filter((token) => token.length > 0);
+}
+
+export function matchQueryToText(query: string, text: string): boolean {
+  const tokens = tokenizeSearchText(query);
+  if (tokens.length === 0) return false;
+  const haystack = ` ${normalizeSearchText(text)} `;
+  return tokens.every((token) => haystack.includes(` ${token} `));
+}
+
 function matchesFieldName(field: OpField, name: string): boolean {
   const target = normalizeFieldName(name);
   return (
@@ -670,9 +687,34 @@ export function listFavorites(vault: string = 'Private'): OpItem[] {
  */
 export function searchItems(query: string, vault: string = 'Private'): OpItem[] {
   const items = listItems(vault);
-  return items.filter((item) =>
-    item.title.toLowerCase().includes(query.toLowerCase())
+  if (!query.trim()) return [];
+
+  const titleMatches = items.filter((item) =>
+    matchQueryToText(query, item.title)
   );
+
+  if (titleMatches.length > 0) {
+    return titleMatches;
+  }
+
+  const maxFieldItems = 200;
+  const candidates = items.slice(0, maxFieldItems);
+  const deepMatches: OpItem[] = [];
+
+  for (const item of candidates) {
+    const itemRef = item.id || item.title;
+    const fullItem = getItem(itemRef, vault);
+    const fields = fullItem?.fields ?? [];
+    const fieldText = fields
+      .map((field) => [field.label, field.id, field.value].filter(Boolean).join(' '))
+      .join(' ');
+    const haystack = `${fullItem?.title ?? item.title} ${fieldText}`.trim();
+    if (haystack && matchQueryToText(query, haystack)) {
+      deepMatches.push(fullItem ?? item);
+    }
+  }
+
+  return deepMatches;
 }
 
 /**
