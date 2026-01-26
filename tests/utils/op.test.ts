@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getItemFields, getDefaultFieldForCategory } from '../../src/utils/op.js';
+import { getItemFields, getDefaultFieldForCategory, matchQueryToText, getNonEmptyFields } from '../../src/utils/op.js';
 
 test('getDefaultFieldForCategory returns credential for API_CREDENTIAL', async () => {
   assert.equal(getDefaultFieldForCategory('API_CREDENTIAL'), 'credential');
@@ -31,4 +31,21 @@ test('getItemFields returns empty array when item has no fields', async (t) => {
   // This will test the function behavior - will fail until implementation
   // Note: Full integration tests would require mocking getItem
   assert.ok(Array.isArray(getItemFields('nonexistent-item', 'Private')));
+});
+
+test('matchQueryToText matches tokens across punctuation and case', async () => {
+  assert.equal(matchQueryToText('Daytona API', 'daytona-api url'), true);
+  assert.equal(matchQueryToText('sandbox', 'Sandbox-Env'), true);
+  assert.equal(matchQueryToText('daytona', 'ListMonk API'), false);
+});
+
+test('getNonEmptyFields filters empty values', async () => {
+  const fields = getNonEmptyFields([
+    { id: 'token', label: 'token', type: 'CONCEALED', value: 'abc' },
+    { id: 'empty', label: 'empty', type: 'STRING', value: '' },
+    { id: 'spaces', label: 'spaces', type: 'STRING', value: '   ' },
+    { id: 'unset', label: 'unset', type: 'STRING' },
+  ]);
+  assert.equal(fields.length, 1);
+  assert.equal(fields[0].id, 'token');
 });
