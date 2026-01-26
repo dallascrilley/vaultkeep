@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getItemFields, getDefaultFieldForCategory, matchQueryToText, getNonEmptyFields } from '../../src/utils/op.js';
+import { getItemFields, getDefaultFieldForCategory, matchQueryToText, getNonEmptyFields, buildItemSearchText } from '../../src/utils/op.js';
 
 test('getDefaultFieldForCategory returns credential for API_CREDENTIAL', async () => {
   assert.equal(getDefaultFieldForCategory('API_CREDENTIAL'), 'credential');
@@ -48,4 +48,27 @@ test('getNonEmptyFields filters empty values', async () => {
   ]);
   assert.equal(fields.length, 1);
   assert.equal(fields[0].id, 'token');
+});
+
+test('buildItemSearchText excludes concealed values but includes metadata', async () => {
+  const text = buildItemSearchText(
+    {
+      id: '1',
+      title: 'Daytona API',
+      vault: 'Private',
+      category: 'API_CREDENTIAL',
+      tags: ['sandbox'],
+      urls: [{ label: 'console', href: 'https://daytona.io' }],
+    },
+    [
+      { id: 'token', label: 'token', type: 'CONCEALED', value: 'secret' },
+      { id: 'notesPlain', label: 'notes', type: 'STRING', value: 'rotate weekly' },
+    ]
+  );
+
+  assert.equal(text.includes('Daytona'), true);
+  assert.equal(text.includes('sandbox'), true);
+  assert.equal(text.includes('daytona.io'), true);
+  assert.equal(text.includes('rotate weekly'), true);
+  assert.equal(text.includes('secret'), false);
 });
