@@ -46,7 +46,9 @@ test('inspect shows item fields', async () => {
   await inspectCommand('GitHub PAT', {});
 
   assert.ok(consoleOutput.some((line) => line.includes('token')));
+  assert.ok(consoleOutput.some((line) => line.includes('secret')));
   assert.ok(consoleOutput.some((line) => line.includes('username')));
+  assert.ok(consoleOutput.some((line) => line.includes('user')));
 });
 
 test('inspect shows item with no fields', async () => {
@@ -86,9 +88,9 @@ test('inspect outputs JSON when --json flag is set', async () => {
   assert.equal(parsed.title, 'GitHub PAT');
   assert.equal(parsed.fields.length, 2);
   assert.equal(parsed.fields[0].label, 'token');
-  // Value should not be included in JSON output
-  assert.equal(parsed.fields[0].value, undefined);
-  assert.equal(parsed.notes, 'rotated weekly');
+  assert.equal(parsed.fields[0].value, 'secret');
+  assert.equal(parsed.fields[1].label, 'notes');
+  assert.equal(parsed.fields[1].value, 'rotated weekly');
 });
 
 test('inspect fails when item not found', async () => {

@@ -298,7 +298,7 @@ test('suggests inspect command when no fields available', async () => {
 
 test('retrieves secret successfully when it exists', async () => {
   secretValue = 'my-secret-value';
-  itemFields = ['credential', 'notesPlain'];
+  itemFields = ['credential', 'notesPlain', 'username'];
   const getCommand = buildGetCommand();
   const logOutput: string[] = [];
 
@@ -313,8 +313,16 @@ test('retrieves secret successfully when it exists', async () => {
     'Expected secret value in output'
   );
   assert.ok(
-    logOutput.some((msg) => msg.includes('Notes:')),
-    'Expected notes label in output'
+    logOutput.some((msg) => msg.includes('Fields:')),
+    'Expected fields section in output'
+  );
+  assert.ok(
+    logOutput.some((msg) => msg.includes('notesPlain') || msg.includes('notes')),
+    'Expected notes field in output'
+  );
+  assert.ok(
+    logOutput.some((msg) => msg.includes('username')),
+    'Expected username field in output'
   );
 
   logMock.mock.restore();

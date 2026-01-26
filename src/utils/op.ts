@@ -194,6 +194,17 @@ export function getNotesValue(fields?: OpField[]): string | null {
   return value.length > 0 ? value : null;
 }
 
+export function getNonEmptyFields(fields?: OpField[]): OpField[] {
+  if (!fields) return [];
+  return fields.filter((field) => {
+    if (field.value === undefined || field.value === null) {
+      return false;
+    }
+    const value = String(field.value);
+    return value.trim().length > 0;
+  });
+}
+
 /**
  * Check if an item name contains characters that break op:// references
  */
