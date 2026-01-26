@@ -185,6 +185,15 @@ export function resolveSecretFieldForItem(
   return { field: defaultField };
 }
 
+export function getNotesValue(fields?: OpField[]): string | null {
+  const notesField = findNotesField(fields);
+  if (!notesField || notesField.value === undefined) {
+    return null;
+  }
+  const value = String(notesField.value);
+  return value.length > 0 ? value : null;
+}
+
 /**
  * Check if an item name contains characters that break op:// references
  */
