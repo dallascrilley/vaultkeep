@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, findSimilarItemsWithScore, getItem, getDefaultFieldForCategory, resolveSecretFieldForItem } from '../utils/op.js';
+import { getSecret, setSecret, checkOpCli, itemExists, getItemFields, findSimilarItems, findSimilarItemsWithScore, getItem, getDefaultFieldForCategory, resolveSecretFieldForItem, getNotesValue } from '../utils/op.js';
 import type { SimilarItem } from '../utils/op.js';
 import {
   applyColorConfig,
@@ -34,6 +34,7 @@ export interface GetDependencies {
   getItem: typeof getItem;
   getDefaultFieldForCategory: typeof getDefaultFieldForCategory;
   resolveSecretFieldForItem: typeof resolveSecretFieldForItem;
+  getNotesValue: typeof getNotesValue;
   prompt: typeof inquirer.prompt;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
@@ -54,6 +55,7 @@ const defaultDependencies: GetDependencies = {
   getItem,
   getDefaultFieldForCategory,
   resolveSecretFieldForItem,
+  getNotesValue,
   prompt: inquirer.prompt,
   applyColorConfig,
   createSpinner,
@@ -155,12 +157,13 @@ export function createGetCommand(
       }
 
       if (secret !== null) {
+        const notesValue = deps.getNotesValue(cachedItem?.fields);
         if (!quietSpinner) {
           spinner.succeed(chalk.green('Secret retrieved!'));
         }
 
         if (outputMode === 'json') {
-          console.log(JSON.stringify({ name: actualName, vault, field, value: secret }, null, 2));
+          console.log(JSON.stringify({ name: actualName, vault, field, value: secret, notes: notesValue }, null, 2));
           return;
         }
 
@@ -173,6 +176,10 @@ export function createGetCommand(
           console.log(chalk.cyan('\nSecret value:'));
         }
         console.log(chalk.white(secret));
+        if (!quiet) {
+          console.log(chalk.cyan('\nNotes:'));
+          console.log(chalk.white(notesValue ?? '(none)'));
+        }
         return;
       }
 

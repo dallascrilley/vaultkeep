@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { getItem, checkOpCli, findSimilarItems } from '../utils/op.js';
+import { getItem, checkOpCli, findSimilarItems, getNotesValue } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -19,6 +19,7 @@ export interface InspectDependencies {
   getItem: typeof getItem;
   checkOpCli: typeof checkOpCli;
   findSimilarItems: typeof findSimilarItems;
+  getNotesValue: typeof getNotesValue;
   applyColorConfig: typeof applyColorConfig;
   createSpinner: typeof createSpinner;
   resolveBooleanOption: typeof resolveBooleanOption;
@@ -30,6 +31,7 @@ const defaultDependencies: InspectDependencies = {
   getItem,
   checkOpCli,
   findSimilarItems,
+  getNotesValue,
   applyColorConfig,
   createSpinner,
   resolveBooleanOption,
@@ -83,11 +85,14 @@ export function createInspectCommand(
 
       spinner.succeed(chalk.green(`Found item "${name}"`));
 
+      const notesValue = deps.getNotesValue(item.fields);
+
       if (options.json) {
         deps.log(JSON.stringify({
           title: item.title,
           vault: item.vault || vault,
           category: item.category,
+          notes: notesValue,
           fields: item.fields?.map((f) => ({
             label: f.label,
             type: f.type,
@@ -100,6 +105,8 @@ export function createInspectCommand(
       deps.log(chalk.cyan(`\nItem: ${chalk.white(item.title)}`));
       deps.log(chalk.cyan(`Vault: ${chalk.white(item.vault || vault)}`));
       deps.log(chalk.cyan(`Category: ${chalk.white(item.category)}`));
+      deps.log(chalk.cyan('\nNotes:'));
+      deps.log(chalk.white(notesValue ?? '(none)'));
       deps.log(chalk.cyan('\nFields:'));
 
       if (!item.fields || item.fields.length === 0) {

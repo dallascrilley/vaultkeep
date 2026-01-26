@@ -73,6 +73,7 @@ test('inspect outputs JSON when --json flag is set', async () => {
     category: 'API_CREDENTIAL',
     fields: [
       { id: 'token', type: 'CONCEALED', label: 'token', value: 'secret' },
+      { id: 'notesPlain', type: 'STRING', label: 'notes', value: 'rotated weekly' },
     ],
   };
 
@@ -83,10 +84,11 @@ test('inspect outputs JSON when --json flag is set', async () => {
   assert.ok(jsonOutput, 'Should output JSON');
   const parsed = JSON.parse(jsonOutput);
   assert.equal(parsed.title, 'GitHub PAT');
-  assert.equal(parsed.fields.length, 1);
+  assert.equal(parsed.fields.length, 2);
   assert.equal(parsed.fields[0].label, 'token');
   // Value should not be included in JSON output
   assert.equal(parsed.fields[0].value, undefined);
+  assert.equal(parsed.notes, 'rotated weekly');
 });
 
 test('inspect fails when item not found', async () => {
