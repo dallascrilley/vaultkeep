@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { listItems, searchItems, listFavorites, checkOpCli } from '../utils/op.js';
+import { listItems, searchItems, searchItemsAll, listFavorites, checkOpCli } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -42,11 +42,17 @@ export async function listCommand(options: ListOptions): Promise<void> {
     const quietSpinner = Boolean(quiet || options.json || options.plain);
     const spinner = createSpinner(loadingMsg, quietSpinner);
 
-    const items = options.favorites
+    let items = options.favorites
       ? listFavorites(vault)
       : options.search
       ? searchItems(options.search, vault)
       : listItems(vault);
+    let searchedAllVaults = false;
+
+    if (options.search && items.length === 0) {
+      items = searchItemsAll(options.search);
+      searchedAllVaults = items.length > 0;
+    }
 
     if (!quietSpinner) {
       spinner.stop();
@@ -64,7 +70,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
       const msg = options.favorites
         ? 'No favorites found. Mark items as favorites in 1Password to see them here.'
         : options.search
-        ? `No items found matching "${options.search}".`
+        ? `No items found matching "${options.search}"${searchedAllVaults ? ' in any vault' : ''}.`
         : 'No items found.';
       console.log(chalk.yellow(msg));
       return;
@@ -87,7 +93,9 @@ export async function listCommand(options: ListOptions): Promise<void> {
     const header = options.favorites
       ? `\nFavorites in vault "${vault}":\n`
       : options.search
-      ? `\nSearch results for "${options.search}" in vault "${vault}":\n`
+      ? searchedAllVaults
+        ? `\nSearch results for "${options.search}" across all vaults:\n`
+        : `\nSearch results for "${options.search}" in vault "${vault}":\n`
       : `\nItems in vault "${vault}":\n`;
     console.log(chalk.bold.cyan(header));
 
@@ -117,7 +125,9 @@ export async function listCommand(options: ListOptions): Promise<void> {
     const totalMsg = options.favorites
       ? `\nTotal: ${items.length} favorites`
       : options.search
-      ? `\nTotal: ${items.length} matching items`
+      ? searchedAllVaults
+        ? `\nTotal: ${items.length} matching items (all vaults)`
+        : `\nTotal: ${items.length} matching items`
       : `\nTotal: ${items.length} items`;
     console.log(chalk.gray(totalMsg));
   } catch (error) {

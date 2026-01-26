@@ -4,7 +4,14 @@ export interface OpItem {
   vault: string;
   category: string;
   favorite?: boolean;
+  tags?: string[];
+  urls?: OpUrl[];
   fields?: OpField[];
+}
+
+export interface OpUrl {
+  href?: string;
+  label?: string;
 }
 
 export interface OpField {
