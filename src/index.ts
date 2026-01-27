@@ -62,6 +62,18 @@ program
   .showSuggestionAfterError()
   .option('--retry <count>', 'max retry attempts for transient failures (default: 3, env: OPS_RETRY_COUNT)')
   .option('--no-retry', 'disable retry logic (env: OPS_NO_RETRY=1)')
+  .addHelpText(
+    'after',
+    `
+Op passthrough:
+  ops op <args...>          Run the underlying 1Password CLI directly
+  ops <unknown> <args...>   Forward unknown commands to \`op\`
+
+Examples:
+  ops item list --vault Work
+  ops op vault list
+`
+  )
   .hook('preAction', (thisCommand) => {
     loadSessionCacheIntoEnv();
     const opts = thisCommand.opts();
