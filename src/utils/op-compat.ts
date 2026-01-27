@@ -32,6 +32,14 @@ function isHelpOrVersionFlag(value: string): boolean {
   return value === '-h' || value === '--help' || value === '-V' || value === '--version';
 }
 
+function isFlagWithoutValue(token: string): boolean {
+  return token === '--no-retry' || isHelpOrVersionFlag(token);
+}
+
+function hasInlineValue(token: string): boolean {
+  return token.startsWith('--') && token.includes('=');
+}
+
 function stripOpsGlobalOptions(argv: string[]): string[] {
   const result: string[] = [];
   let passthrough = false;
@@ -77,22 +85,29 @@ function getFirstCommandTokenIndex(argv: string[]): number | null {
     const token = argv[i];
     if (token === '--') return null;
 
-    if (token === '--no-retry') {
-      continue;
-    }
-
     if (token === '--retry') {
-      if (i + 1 < argv.length && argv[i + 1] !== '--') {
-        i++;
+      if (i + 1 < argv.length && argv[i + 1] !== '--') i++;
+      continue;
+    }
+
+    if (token.startsWith('--retry=')) continue;
+
+    if (token.startsWith('-')) {
+      if (hasInlineValue(token) || isFlagWithoutValue(token)) {
+        continue;
       }
+
+      const next = argv[i + 1];
+      if (!next || next === '--' || next.startsWith('-')) {
+        continue;
+      }
+
+      // Heuristic: most options take a value; skip it so we don't treat the
+      // option value as the command name (e.g. `ops --vault Work get ...`).
+      i++;
       continue;
     }
 
-    if (token.startsWith('--retry=')) {
-      continue;
-    }
-
-    if (token.startsWith('-')) continue;
     return i;
   }
   return null;
@@ -121,11 +136,6 @@ export function resolveOpCompatRoute(argv: string[]): OpCompatRoute {
 
   if (isHelpOrVersionFlag(first)) {
     return { route: 'ops' };
-  }
-
-  if (first.startsWith('-') && !isOpsGlobalOptionToken(first)) {
-    const opArgs = stripOpsGlobalOptions(argv);
-    return { route: 'op', opArgs: opArgs.length > 0 ? opArgs : ['--help'] };
   }
 
   const commandIndex = getFirstCommandTokenIndex(argv);

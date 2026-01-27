@@ -49,3 +49,8 @@ test('routes ops global options + op command to op (stripping ops options)', () 
   });
 });
 
+test('does not treat option values as commands (e.g. --vault Work get ...)', () => {
+  assert.deepEqual(resolveOpCompatRoute(['--vault', 'Work', 'get', 'MY_SECRET']), {
+    route: 'ops',
+  });
+});
