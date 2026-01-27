@@ -35,6 +35,10 @@ function getOpEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+export function getOpCliEnv(): NodeJS.ProcessEnv {
+  return getOpEnv();
+}
+
 function formatOpErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') {
     return '';

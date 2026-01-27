@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from 'child_process';
 import { Command } from 'commander';
 import { createRequire } from 'module';
 import { getCommand } from './commands/get.js';
@@ -14,15 +15,41 @@ import { vaultsCommand } from './commands/vaults.js';
 import { completionCommand } from './commands/completion.js';
 import { getManyCommand } from './commands/get-many.js';
 import { templateApplyCommand, templateCreateCommand, templateListCommand } from './commands/template.js';
-import { setRetryOptions } from './utils/op.js';
+import { getOpCliEnv, setRetryOptions } from './utils/op.js';
 import { isRetryDisabled } from './utils/retry.js';
 import { loadSessionCacheIntoEnv, persistSessionCacheFromEnv } from './utils/session-cache.js';
 import { interactiveCommand } from './commands/interactive.js';
 import { whoamiCommand } from './commands/whoami.js';
+import { resolveOpCompatRoute } from './utils/op-compat.js';
 
 // Dynamic version from package.json
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
+
+const compatRoute = resolveOpCompatRoute(process.argv.slice(2));
+if (compatRoute.route === 'op') {
+  loadSessionCacheIntoEnv();
+
+  const result = spawnSync('op', compatRoute.opArgs, {
+    stdio: 'inherit',
+    env: getOpCliEnv(),
+  });
+
+  persistSessionCacheFromEnv();
+
+  if (result.error && (result.error as any).code === 'ENOENT') {
+    console.error(
+      'op CLI not found. Install from: https://1password.com/downloads/command-line/'
+    );
+    process.exit(1);
+  }
+
+  if (typeof result.status === 'number') {
+    process.exit(result.status);
+  }
+
+  process.exit(1);
+}
 
 const program = new Command();
 
