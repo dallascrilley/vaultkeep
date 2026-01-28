@@ -20,6 +20,7 @@ import { isRetryDisabled } from './utils/retry.js';
 import { loadSessionCacheIntoEnv, persistSessionCacheFromEnv } from './utils/session-cache.js';
 import { interactiveCommand } from './commands/interactive.js';
 import { whoamiCommand } from './commands/whoami.js';
+import { createUpdateCommand } from './commands/update.js';
 import { resolveOpCompatRoute } from './utils/op-compat.js';
 
 // Dynamic version from package.json
@@ -287,6 +288,13 @@ program
   .option('-q, --quiet', 'suppress non-essential output')
   .option('--no-color', 'disable color output')
   .action(completionCommand);
+
+program
+  .command('update')
+  .description('Update ops to the latest version')
+  .option('-c, --check', 'check for updates without installing')
+  .option('--force', 'reinstall even if already up to date')
+  .action(createUpdateCommand());
 
 const template = program
   .command('template')
