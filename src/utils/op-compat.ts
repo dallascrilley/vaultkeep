@@ -24,6 +24,7 @@ const OPS_INTERNAL_TOP_LEVEL_COMMANDS = new Set([
   'whoami',
   'completion',
   'template',
+  'update',
 ]);
 
 const OPS_TEMPLATE_SUBCOMMANDS = new Set(['list', 'create', 'apply']);

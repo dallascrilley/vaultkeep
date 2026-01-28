@@ -66,7 +66,7 @@ export function createUpdateCommand(deps: UpdateDependencies = defaultDependenci
     const currentVersion = getCurrentVersion();
 
     if (options.check) {
-      const spinner = createSpinner('Checking for updates...', false).start();
+      const spinner = createSpinner('Checking for updates...', false);
       try {
         const latestVersion = await getLatestVersion();
         spinner.stop();
@@ -84,7 +84,7 @@ export function createUpdateCommand(deps: UpdateDependencies = defaultDependenci
       return;
     }
 
-    const spinner = createSpinner('Checking for updates...', false).start();
+    const spinner = createSpinner('Checking for updates...', false);
     let latestVersion: string;
 
     try {
