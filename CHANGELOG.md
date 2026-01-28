@@ -1,3 +1,10 @@
+## [1.14.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.14.0...v1.14.1) (2026-01-28)
+
+
+### Bug Fixes
+
+* register update in op-compat and fix spinner usage ([d7f2129](https://github.com/dallascrilley/op-cli-helper/commit/d7f21297beef0607d5fc864756a98db916eaedea))
+
 # [1.14.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.13.0...v1.14.0) (2026-01-28)
 
 
