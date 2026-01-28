@@ -1,3 +1,16 @@
+# [1.13.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.12.2...v1.13.0) (2026-01-28)
+
+
+### Bug Fixes
+
+* avoid misrouting option values ([5e7767a](https://github.com/dallascrilley/op-cli-helper/commit/5e7767ac64c94e528036dece0cf0257d31204cbc))
+* route leading flags to op ([7c7d516](https://github.com/dallascrilley/op-cli-helper/commit/7c7d5165dfdef2e602fa13fa462d985ee719747b))
+
+
+### Features
+
+* add op CLI passthrough ([cf94c10](https://github.com/dallascrilley/op-cli-helper/commit/cf94c1078f065bbc889e1d2b7563ecdf7a5e045c))
+
 ## [1.12.2](https://github.com/dallascrilley/op-cli-helper/compare/v1.12.1...v1.12.2) (2026-01-19)
 
 
