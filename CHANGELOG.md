@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.13.0...v1.14.0) (2026-01-28)
+
+
+### Features
+
+* add update command for self-updating ops ([3d8172f](https://github.com/dallascrilley/op-cli-helper/commit/3d8172fb08cee53148740633f84fda8470089c4a))
+
 # [1.13.0](https://github.com/dallascrilley/op-cli-helper/compare/v1.12.2...v1.13.0) (2026-01-28)
 
 
