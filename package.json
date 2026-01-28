@@ -1,6 +1,6 @@
 {
   "name": "dc-ops-cli",
-  "version": "1.12.2",
+  "version": "1.13.0",
   "description": "Easy secret retrieval from 1Password with smart fallbacks",
   "type": "module",
   "main": "dist/index.js",
