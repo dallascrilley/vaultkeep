@@ -36,10 +36,36 @@ cd op-cli-helper
 npm install && npm run build && npm link
 ```
 
+## Update
+
+```bash
+# Update to latest version
+ops update
+
+# Check for updates without installing
+ops update --check
+
+# Force reinstall current version
+ops update --force
+```
+
 ## Prerequisites
 
 1. Install [1Password CLI](https://1password.com/downloads/command-line/)
 2. Sign in: `op signin`
+
+### Service Account (Headless/CI)
+
+For automated environments without Touch ID, use a service account token:
+
+```bash
+# Create directory and save token
+mkdir -p ~/.config/op
+echo "ops_YOUR_SERVICE_ACCOUNT_TOKEN" > ~/.config/op/sa_token
+chmod 600 ~/.config/op/sa_token
+```
+
+ops automatically loads the token from `~/.config/op/sa_token` for all commands. Get a service account token from [1Password Settings → Developer → Service Accounts](https://my.1password.com).
 
 ## Usage
 
@@ -509,6 +535,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 | `inspect <name>` | Show available fields for a secret | `-v, --vault`, `-j, --json` |
 | `vaults` | List available vaults | `-j, --json` |
 | `whoami` | Show session and account info | `-j, --json`, `-q, --quiet` |
+| `update` | Update ops to latest version | `-c, --check`, `--force` |
 | `completion [shell]` | Generate shell completion script | Shells: `bash`, `zsh`, `fish` |
 
 ## Development
