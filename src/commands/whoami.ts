@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { execFileSync } from 'child_process';
-import { checkOpCli, listVaults } from '../utils/op.js';
+import { checkOpCli, listVaults, getOpCliEnv } from '../utils/op.js';
 import {
   applyColorConfig,
   createSpinner,
@@ -37,7 +37,7 @@ function getAccountInfo(): OpAccount | null {
   try {
     const result = execFileSync('op', ['whoami', '--format', 'json'], {
       encoding: 'utf-8',
-      env: process.env,
+      env: getOpCliEnv(),
     });
     return JSON.parse(result.trim());
   } catch {
