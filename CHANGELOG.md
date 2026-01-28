@@ -1,3 +1,10 @@
+## [1.14.2](https://github.com/dallascrilley/op-cli-helper/compare/v1.14.1...v1.14.2) (2026-01-28)
+
+
+### Bug Fixes
+
+* use service account token in whoami command ([6ba3d0d](https://github.com/dallascrilley/op-cli-helper/commit/6ba3d0d6e75c3e26ce35f811a1c2cf0fae7417f9))
+
 ## [1.14.1](https://github.com/dallascrilley/op-cli-helper/compare/v1.14.0...v1.14.1) (2026-01-28)
 
 
