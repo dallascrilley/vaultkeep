@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync } from 'fs';
+import { writeFileSync, existsSync, chmodSync } from 'fs';
 import { dirname } from 'path';
 import chalk from 'chalk';
 import picomatch from 'picomatch';
@@ -19,9 +19,13 @@ export interface ExportDeps {
   getItem: (title: string, vault: string) => OpItem | null;
   existsSync: (path: string) => boolean;
   dirname: (path: string) => string;
-  writeFileSync: (path: string, content: string) => void;
+  writeFileSync: (path: string, content: string, options?: { mode?: number }) => void;
+  chmodSync: (path: string, mode: number) => void;
   createSpinner: (text: string, quiet: boolean) => ReturnType<typeof oraType>;
 }
+
+/** Owner-only permissions for the plaintext secrets file `--output` produces. */
+export const EXPORT_FILE_MODE = 0o600;
 
 const defaultDeps: ExportDeps = {
   checkOpCli,
@@ -30,6 +34,7 @@ const defaultDeps: ExportDeps = {
   existsSync,
   dirname,
   writeFileSync,
+  chmodSync,
   createSpinner,
 };
 
@@ -131,7 +136,12 @@ export function createExportCommand(deps: ExportDeps = defaultDeps) {
 
       // Output to file or stdout
       if (!outputToStdout) {
-        deps.writeFileSync(options.output!, output);
+        // The file holds plaintext secrets: create it owner-only, and narrow an
+        // existing file too (mode on write only applies when the file is created).
+        deps.writeFileSync(options.output!, output, { mode: EXPORT_FILE_MODE });
+        if (process.platform !== 'win32') {
+          deps.chmodSync(options.output!, EXPORT_FILE_MODE);
+        }
         if (!quiet) {
           console.log(
             chalk.green(

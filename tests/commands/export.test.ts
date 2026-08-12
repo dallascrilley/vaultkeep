@@ -1,6 +1,17 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { createExportCommand } from '../../src/commands/export.js';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { createExportCommand, EXPORT_FILE_MODE } from '../../src/commands/export.js';
 import type oraType from 'ora';
 
 function createSpinner() {
@@ -40,6 +51,7 @@ test('export fails early if output directory does not exist', async () => {
     existsSync: () => false, // Directory does not exist
     dirname: (p: string) => '/nonexistent/dir',
     writeFileSync: () => {},
+    chmodSync: () => {},
     createSpinner: () => createSpinner(),
   });
 
@@ -78,6 +90,7 @@ test('export skips path validation for stdout output', async () => {
     existsSync: () => false, // Would fail if checked, but should be skipped for stdout
     dirname: (p: string) => '/nonexistent',
     writeFileSync: () => {},
+    chmodSync: () => {},
     createSpinner: () => createSpinner(),
   });
 
@@ -113,6 +126,7 @@ test('export writes secrets to file when directory exists', async () => {
     writeFileSync: (path: string, content: string) => {
       written.push({ path, content });
     },
+    chmodSync: () => {},
     createSpinner: () => createSpinner(),
   });
 
@@ -123,4 +137,84 @@ test('export writes secrets to file when directory exists', async () => {
   assert.ok(written[0].content.includes('API_KEY="my-secret"'));
 
   logMock.mock.restore();
+});
+
+test('export requests mode 0600 for the plaintext secrets file', async () => {
+  const writeCalls: Array<{ path: string; options?: { mode?: number } }> = [];
+  const chmodCalls: Array<{ path: string; mode: number }> = [];
+  const logMock = mock.method(console, 'log', () => {});
+
+  const exportCommand = createExportCommand({
+    checkOpCli: () => {},
+    listItems: () => [{ id: '1', title: 'API_KEY', vault: 'Private', category: 'password' }],
+    getItem: () => ({
+      id: '1',
+      title: 'API_KEY',
+      vault: 'Private',
+      category: 'password',
+      fields: [{ id: 'password', type: 'CONCEALED', label: 'password', value: 'my-secret' }],
+    }),
+    existsSync: () => true,
+    dirname: () => '/existing/dir',
+    writeFileSync: (path: string, _content: string, options?: { mode?: number }) => {
+      writeCalls.push({ path, options });
+    },
+    chmodSync: (path: string, mode: number) => {
+      chmodCalls.push({ path, mode });
+    },
+    createSpinner: () => createSpinner(),
+  });
+
+  await exportCommand({ output: '/existing/dir/secrets.env', quiet: true });
+
+  assert.equal(writeCalls.length, 1);
+  assert.equal(writeCalls[0].options?.mode, EXPORT_FILE_MODE);
+  assert.equal(EXPORT_FILE_MODE, 0o600);
+
+  if (process.platform === 'win32') {
+    assert.equal(chmodCalls.length, 0, 'chmod is skipped on Windows');
+  } else {
+    assert.deepEqual(chmodCalls, [{ path: '/existing/dir/secrets.env', mode: 0o600 }]);
+  }
+
+  logMock.mock.restore();
+});
+
+test('export writes a real file with owner-only permissions', async (t) => {
+  if (process.platform === 'win32') {
+    t.skip('POSIX file modes are not meaningful on Windows');
+    return;
+  }
+
+  const dir = mkdtempSync(join(tmpdir(), 'ops-export-mode-'));
+  const target = join(dir, 'secrets.env');
+  // Pre-create the file world-readable: the export must narrow it, not inherit it.
+  writeFileSync(target, 'stale', { mode: 0o644 });
+  const logMock = mock.method(console, 'log', () => {});
+
+  const exportCommand = createExportCommand({
+    checkOpCli: () => {},
+    listItems: () => [{ id: '1', title: 'API_KEY', vault: 'Private', category: 'password' }],
+    getItem: () => ({
+      id: '1',
+      title: 'API_KEY',
+      vault: 'Private',
+      category: 'password',
+      fields: [{ id: 'password', type: 'CONCEALED', label: 'password', value: 'my-secret' }],
+    }),
+    existsSync,
+    dirname,
+    writeFileSync,
+    chmodSync,
+    createSpinner: () => createSpinner(),
+  });
+
+  try {
+    await exportCommand({ output: target, quiet: true });
+    assert.equal(statSync(target).mode & 0o777, 0o600);
+    assert.ok(readFileSync(target, 'utf8').includes('API_KEY="my-secret"'));
+  } finally {
+    logMock.mock.restore();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
