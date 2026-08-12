@@ -22,7 +22,7 @@ Status: All quality gates passing, friction points identified and prioritized
 - **Root Cause**: ts-node ESM loader not configured for project setup
 - **Fix**: Updated dev script to use `TS_NODE_TRANSPILE_ONLY=1 node --loader ts-node/esm`
 - **Testing**: `npm run dev -- --help` now works
-- **Commit**: 4695de0
+- **Commit**: 0be291f
 
 **2. First-Install Dependency Failures** → ✅ FIXED
 - **Severity**: MEDIUM
@@ -30,7 +30,7 @@ Status: All quality gates passing, friction points identified and prioritized
 - **Root Cause**: ESM + TypeScript peer dependency conflicts
 - **Fix**: Added `.npmrc` with `legacy-peer-deps=true`
 - **Impact**: Smoother onboarding for new contributors
-- **Commit**: 4695de0
+- **Commit**: 0be291f
 
 ### IDENTIFIED (Future)
 
