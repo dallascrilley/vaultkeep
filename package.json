@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "ops": "./dist/index.js"
+    "ops": "dist/index.js"
   },
   "files": [
     "dist"
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dallascrilley/vaultkeep.git"
+    "url": "git+https://github.com/dallascrilley/vaultkeep.git"
   },
   "homepage": "https://github.com/dallascrilley/vaultkeep#readme",
   "bugs": {
