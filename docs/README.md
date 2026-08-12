@@ -405,9 +405,8 @@ npm run build
 ```bash
 npm install -g dc-ops-cli
 ```
-Note: the npm release currently lags this repository; see the caveat in the
-top-level [README's Installation section](../README.md#installation) before
-recommending this path.
+The npm release is published from CI on every release commit, so it tracks
+this repository.
 
 **Option B: Standalone binary**
 ```bash
