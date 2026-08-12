@@ -2,7 +2,6 @@
 
 Fetch, inject, and export 1Password secrets from the command line.
 
-[![npm version](https://img.shields.io/npm/v/dc-ops-cli.svg)](https://www.npmjs.com/package/dc-ops-cli)
 [![CI](https://github.com/dallascrilley/vaultkeep/actions/workflows/ci.yml/badge.svg)](https://github.com/dallascrilley/vaultkeep/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -20,7 +19,8 @@ and are staying, so existing installs and scripts keep working.
 ## In 30 seconds
 
 ```bash
-npm install -g dc-ops-cli
+git clone https://github.com/dallascrilley/vaultkeep.git
+cd vaultkeep && npm install && npm run build && npm link
 
 ops get GITHUB_TOKEN                   # read one secret
 ops run -- npm start                   # inject a .env.ops mapping into a process
@@ -63,28 +63,38 @@ Jump to [Installation](#installation), the
 
 ## Installation
 
-```bash
-# Install from npm
-npm install -g dc-ops-cli
+Install from source. This is the only path that gives you the build this
+README describes:
 
-# Or install from source
+```bash
 git clone https://github.com/dallascrilley/vaultkeep.git
 cd vaultkeep
 npm install && npm run build && npm link
 ```
 
+**Why not `npm install -g dc-ops-cli` right now.** The latest npm release
+(1.14.2, published 2026-01-28) predates the Vaultkeep rebrand and the security
+work this README and [SECURITY.md](SECURITY.md) describe: the published build
+still passes secret values to `op` through argv, writes `ops export` files with
+default permissions, and exits before the `ops copy` clipboard clear fires. Its
+registry metadata also still points at the repository's old name. The release
+pipeline is currently broken, so no fixed build has reached npm yet. Both
+builds print `1.14.2` from `ops --version`, so the version string cannot tell
+you which one you have; what npm serves is current only once a version newer
+than 1.14.2 appears there. I will remove this caveat when that release lands.
+
 ## Update
 
+For a source install, update with:
+
 ```bash
-# Update to latest version
-ops update
-
-# Check for updates without installing
-ops update --check
-
-# Force reinstall current version
-ops update --force
+git pull && npm install && npm run build
 ```
+
+`ops update` reinstalls from npm, which today means the stale 1.14.2 build
+described above; it would silently replace a source install with the old
+behavior. Leave it alone (including `--check` and `--force`) until a release
+newer than 1.14.2 is on npm.
 
 ## Prerequisites
 
