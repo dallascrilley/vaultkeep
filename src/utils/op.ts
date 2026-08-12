@@ -553,16 +553,27 @@ export function describeOpCommand(args: readonly string[]): string {
  * Strip known secret values out of text that is about to be shown to a user.
  * Applied to subprocess stderr regardless of transport, so a future `op`
  * version that echoes its input cannot turn an error into a disclosure.
+ *
+ * Values reach `op` inside a JSON document, so the escaped form is redacted
+ * too: `op` quotes the offending input when it rejects a template, and a value
+ * containing a quote, backslash, or newline appears there escaped.
  */
 export function redactSecretValues(
   text: string,
   secrets: readonly string[]
 ): string {
   let output = text;
+
   for (const secret of secrets) {
     if (!secret) continue;
-    output = output.split(secret).join(REDACTED);
+
+    const variants = new Set([secret, JSON.stringify(secret).slice(1, -1)]);
+    for (const variant of variants) {
+      if (!variant) continue;
+      output = output.split(variant).join(REDACTED);
+    }
   }
+
   return output;
 }
 
@@ -611,10 +622,28 @@ export interface SecretWriterDeps {
   getItemDocument: (title: string, vault: string) => OpItemDocument | null;
 }
 
+const ITEM_NOT_FOUND_PATTERNS = [
+  /isn't an item/i,
+  /no item matches/i,
+  /no items matched/i,
+  /doesn't exist/i,
+  /not found/i,
+];
+
+function isItemNotFoundError(error: unknown): boolean {
+  const stderr = extractOpStderr(error);
+  return ITEM_NOT_FOUND_PATTERNS.some((pattern) => pattern.test(stderr));
+}
+
 /**
  * Fetch an item as a raw JSON document suitable for round-tripping back into
  * `op item edit`. `getItem` narrows to OpItem; edits need every key `op`
  * emitted, including ones this codebase does not model.
+ *
+ * Only a genuine "no such item" returns null. Every other failure -- an expired
+ * session, a mistyped vault, a network error -- is raised, because callers
+ * treat null as "does not exist yet" and would otherwise create a second item
+ * holding the secret while the real one sat untouched.
  */
 export function getItemDocument(
   title: string,
@@ -635,8 +664,16 @@ export function getItemDocument(
         ? (parsed as OpItemDocument)
         : null;
     }, retryOpts);
-  } catch {
-    return null;
+  } catch (error: unknown) {
+    if (isItemNotFoundError(error)) {
+      return null;
+    }
+
+    const detail = extractOpStderr(error).split('\n')[0]?.trim();
+    throw new OpError(
+      `Failed to read "${title}" from vault "${vault}"${detail ? `: ${detail}` : ''}`,
+      1
+    );
   }
 }
 
@@ -728,9 +765,25 @@ function hasMaskedFieldValue(document: OpItemDocument): boolean {
 }
 
 /**
+ * Passkeys arrive from `op item get --format=json` as a valueless field of type
+ * `UNKNOWN`, and `op item edit --help` states plainly that a JSON template will
+ * overwrite a passkey. Round-tripping such an item turns the passkey into an
+ * empty STRING field and destroys the credential, so detect and refuse it.
+ */
+function hasUnrepresentableField(document: OpItemDocument): boolean {
+  const fields = Array.isArray(document.fields)
+    ? (document.fields as OpItemDocumentField[])
+    : [];
+
+  return fields.some(
+    (field) => String(field.type ?? '').toUpperCase() === 'UNKNOWN'
+  );
+}
+
+/**
  * A JSON template replaces the item it is applied to, so anything the template
- * cannot represent would be destroyed by the round-trip. `op item get` does not
- * emit file attachments, so refuse rather than silently drop them.
+ * cannot carry would be destroyed by the round-trip. Refuse those items rather
+ * than silently dropping part of them.
  */
 function assertDocumentIsTemplateSafe(
   document: OpItemDocument,
@@ -742,7 +795,14 @@ function assertDocumentIsTemplateSafe(
 
   if (hasFiles || isDocument) {
     throw new OpError(
-      `Refusing to update "${title}": items with file attachments cannot be updated through a JSON template without losing the attachment. Update it in the 1Password app instead.`,
+      `Refusing to update "${title}": a JSON template cannot carry file attachments, so the write would drop them. Update it in the 1Password app instead.`,
+      1
+    );
+  }
+
+  if (hasUnrepresentableField(document)) {
+    throw new OpError(
+      `Refusing to update "${title}": the item holds a field the op CLI cannot round-trip through a JSON template, such as a passkey, and the write would destroy it. Update it in the 1Password app instead.`,
       1
     );
   }

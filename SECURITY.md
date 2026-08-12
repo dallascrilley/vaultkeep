@@ -45,7 +45,8 @@ terminal scrollback, CI logs, and any file you redirect output into.
 `ops copy` stays in the foreground until its TTL expires (default 30 seconds),
 then clears the clipboard and confirms it. It also clears on `SIGINT`/`SIGTERM`.
 It only clears if the clipboard still holds the value it wrote, so it will not
-wipe something you copied in the meantime.
+wipe something you copied in the meantime. `--ttl 0` opts out of clearing
+entirely and returns immediately.
 
 Two things still limit this. If the process is killed with `SIGKILL`, or the
 machine loses power, nothing runs and the value stays on the clipboard. And a
@@ -103,16 +104,26 @@ threat model.
 
 Because a value can only be assigned off-argv through a template, an update
 reads the item with `op item get --format=json`, changes the one field, and
-pipes the whole document back to `op item edit`. Anything `op item get` does not
-emit therefore does not survive the round-trip. Per 1Password's own
-documentation, JSON item templates do not carry passkeys, so updating an item
-that holds a passkey will overwrite it.
+pipes the whole document back to `op item edit`. `op` rejects a partial
+template, so the whole document really is required.
 
-Vaultkeep refuses the update outright when the item has file attachments or is
-a Document item, rather than silently dropping the file. It cannot detect a
-passkey, because the JSON never contains one. Edit passkey items in the
-1Password app instead. A previous item version can be restored from 1Password's
-item history if this catches you out.
+Two consequences follow, and Vaultkeep refuses the write rather than let either
+happen silently:
+
+- Anything `op item get` does not emit cannot survive the round-trip. File
+  attachments and Document items are refused. Passkeys arrive as a valueless
+  field of type `UNKNOWN`, and 1Password documents that a JSON template
+  overwrites them, so items holding one are refused too. Edit those in the
+  1Password app.
+- Values that come back masked are refused, since writing them back would
+  replace every other concealed field with its mask.
+
+What is **not** guarded is a concurrent edit. The document is written back
+whole, so a change made to the same item between the read and the write -- from
+the 1Password app, another `ops` process, or a long `ops import` -- is reverted,
+including fields the command never touched. `op` performs no optimistic
+concurrency check. Avoid concurrent writers on one item; 1Password's item
+history can recover a clobbered version.
 
 ### 2. A new item created for a non-default field is an API Credential
 

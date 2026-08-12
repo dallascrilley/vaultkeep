@@ -99,6 +99,18 @@ export function createCopyCommand(
 
       await deps.clipboardWrite(secret);
 
+      // `--ttl 0` means "do not clear": scheduling a zero-delay timer would
+      // wipe the clipboard in the same tick and make the copy a no-op. It is
+      // also the escape hatch for scripts that cannot afford to wait out a TTL.
+      if (ttlSeconds === 0) {
+        if (!quiet) {
+          spinner.succeed(
+            chalk.green('Copied to clipboard! It will not be cleared automatically.')
+          );
+        }
+        return;
+      }
+
       if (!quiet) {
         spinner.succeed(
           chalk.green(`Copied to clipboard! Will clear in ${ttlSeconds}s.`)

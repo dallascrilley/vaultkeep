@@ -146,6 +146,14 @@ ops set GITHUB_TOKEN --vault Work
 ops set GITHUB_TOKEN --value "new_value" -y
 ```
 
+Values are handed to `op` on stdin as an item JSON template, never as command
+arguments, so they are not visible to other processes and do not appear in
+error output. One consequence: a **new** item created for a non-default field
+(`--field api_key`) is an API Credential rather than a Password item, because
+`op` rejects a Password template with an empty password. Either way the value
+stays readable at `op://<vault>/<item>/<field>`. Items created for the default
+`password` field are unchanged.
+
 ### Get multiple secrets
 
 ```bash
@@ -176,9 +184,10 @@ ops copy GITHUB_TOKEN --ttl 10
 ```
 
 `ops copy` stays in the foreground until the TTL expires so it can clear the
-clipboard and confirm it. Press `Ctrl-C` to clear immediately, or run it in the
-background (`ops copy GITHUB_TOKEN &`) if you need the prompt back right away.
-The clear is skipped if you have copied something else in the meantime.
+clipboard and confirm it. Press `Ctrl-C` to clear immediately. For scripts that
+cannot wait, `--ttl 0` copies and returns straight away without ever clearing,
+or run it in the background (`ops copy GITHUB_TOKEN &`). The clear is skipped if
+you have copied something else in the meantime.
 
 ### List secrets
 

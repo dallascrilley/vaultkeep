@@ -246,6 +246,32 @@ test('updates refuse items whose attachments a JSON template would destroy', asy
   assert.equal(spawns.length, 0, 'no write should be attempted');
 });
 
+test('updates refuse an item holding a passkey rather than destroying it', async () => {
+  // `op item get --format=json` reports a passkey as a valueless UNKNOWN field,
+  // and op's own docs warn that a JSON template overwrites passkeys. Writing
+  // this document back would turn the passkey into an empty STRING field.
+  const spawns: Spawn[] = [];
+  const withPasskey: OpItemDocument = {
+    ...existingDocument,
+    category: 'LOGIN',
+    fields: [
+      { id: 'password', type: 'CONCEALED', label: 'password', value: 'old' },
+      { id: 'vfvhvv2ktsenuiyk2amenplaou', type: 'UNKNOWN', label: 'sign in with' },
+    ],
+  };
+
+  assert.throws(
+    () => writerWith(spawns, withPasskey).setSecret('LOGIN_ITEM', SENTINEL, 'Private', 'password'),
+    (error: unknown) => {
+      assert.ok(error instanceof OpError);
+      assert.ok(!error.message.includes(SENTINEL));
+      assert.match(error.message, /passkey/);
+      return true;
+    }
+  );
+  assert.equal(spawns.length, 0, 'no write should be attempted');
+});
+
 test('updates refuse a document whose values came back masked', async () => {
   const spawns: Spawn[] = [];
   const masked: OpItemDocument = {
@@ -289,4 +315,40 @@ test('redactSecretValues removes every occurrence and ignores empty secrets', as
 
   assert.ok(!redacted.includes(SENTINEL));
   assert.equal(redacted, 'a [redacted] b [redacted]');
+});
+
+test('redactSecretValues also removes the JSON-escaped form of a value', async () => {
+  // Values reach op inside a JSON document, so a value containing a quote or a
+  // backslash appears escaped in the text op quotes back on a parse error.
+  const awkward = 'pa"ss\\wo\nrd';
+  const onTheWire = JSON.stringify(awkward).slice(1, -1);
+  const stderr = `unable to process line 1: bad value ${onTheWire}`;
+
+  const redacted = redactSecretValues(stderr, [awkward]);
+
+  assert.ok(!redacted.includes(onTheWire), redacted);
+  assert.ok(!redacted.includes(awkward), redacted);
+});
+
+test('a failed write redacts an awkward value from op stderr', async () => {
+  const awkward = 'pa"ss\\word';
+  const spawns: Spawn[] = [];
+  const writer = writerWith(spawns, null, () => {
+    const error: any = new Error('Command failed');
+    error.status = 1;
+    error.stderr = Buffer.from(
+      `[ERROR] unable to process line 1: ${JSON.stringify(awkward).slice(1, -1)}`
+    );
+    throw error;
+  });
+
+  assert.throws(
+    () => writer.createItem('X', awkward, 'Private', 'password'),
+    (error: unknown) => {
+      assert.ok(error instanceof OpError);
+      assert.ok(!error.message.includes(awkward));
+      assert.ok(!error.message.includes(JSON.stringify(awkward).slice(1, -1)));
+      return true;
+    }
+  );
 });

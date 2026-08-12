@@ -130,6 +130,41 @@ test('the TTL timer holds the process open so the clear actually fires', async (
   }
 });
 
+test('--ttl 0 copies without scheduling a clear', async () => {
+  // Zero must mean "do not clear". Scheduling setTimeout(..., 0) would wipe the
+  // clipboard in the same tick, making the copy a no-op, and it is the escape
+  // hatch for scripts that cannot block for a TTL.
+  const realSetTimeout = globalThis.setTimeout;
+  const handles: NodeJS.Timeout[] = [];
+  const timerMock = mock.method(
+    globalThis,
+    'setTimeout',
+    (handler: any, ms?: number, ...rest: any[]) => {
+      const handle = realSetTimeout(handler, ms, ...rest);
+      handles.push(handle);
+      return handle;
+    }
+  );
+
+  try {
+    const copyCommand = buildCopyCommand();
+    await copyCommand('MY_SECRET', { ttl: 0, quiet: true });
+
+    assert.equal(handles.length, 0, 'no clear should be scheduled');
+
+    await new Promise((resolve) => realSetTimeout(resolve, 50));
+
+    assert.deepEqual(
+      clipboardWrites,
+      ['super-secret'],
+      'clipboard must still hold the secret'
+    );
+  } finally {
+    timerMock.mock.restore();
+    for (const handle of handles) clearTimeout(handle);
+  }
+});
+
 test('copy logs when clipboard is cleared', async () => {
   mock.timers.enable({ apis: ['setTimeout'] });
   const consoleOutput: string[] = [];
