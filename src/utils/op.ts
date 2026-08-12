@@ -505,6 +505,457 @@ export function getSecret(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Secret writes
+//
+// Secret values are never passed to `op` as argv entries. Command arguments are
+// visible to every other process on the machine (`ps`, /proc) and Node embeds
+// the full argv in the error thrown by a failed `execFileSync`, so an
+// assignment statement like `password=<value>` leaks the value both while the
+// write runs and again in the error text if it fails.
+//
+// `op` 2.x accepts an item JSON template on stdin instead:
+//   create: `op item create - --vault <vault>`  (the `-` reads the template)
+//   edit:   `op item edit <item> --vault <vault>` with the template piped in
+// Every write below ships the value through the child process's stdin, leaving
+// argv with nothing but item titles, vault names, and flags.
+// ---------------------------------------------------------------------------
+
+const REDACTED = '[redacted]';
+const CONCEALED_FIELD_TYPE = 'CONCEALED';
+
+export type OpItemDocument = Record<string, unknown>;
+
+interface OpItemDocumentField extends Record<string, unknown> {
+  id?: string;
+  label?: string;
+  type?: string;
+  value?: string;
+}
+
+/**
+ * Render an `op` invocation for an error message. Any `field=value` assignment
+ * keeps its field name and loses its value, so the message stays actionable
+ * without reproducing a secret. Flags (`--vault`, `--category=password`) are
+ * preserved verbatim because they never carry field values.
+ */
+export function describeOpCommand(args: readonly string[]): string {
+  const rendered = args.map((arg) => {
+    if (arg.startsWith('-')) return arg;
+    const separator = arg.indexOf('=');
+    if (separator <= 0) return arg;
+    return `${arg.slice(0, separator)}=${REDACTED}`;
+  });
+  return ['op', ...rendered].join(' ');
+}
+
+/**
+ * Strip known secret values out of text that is about to be shown to a user.
+ * Applied to subprocess stderr regardless of transport, so a future `op`
+ * version that echoes its input cannot turn an error into a disclosure.
+ *
+ * Values reach `op` inside a JSON document, so the escaped form is redacted
+ * too: `op` quotes the offending input when it rejects a template, and a value
+ * containing a quote, backslash, or newline appears there escaped.
+ */
+export function redactSecretValues(
+  text: string,
+  secrets: readonly string[]
+): string {
+  let output = text;
+
+  for (const secret of secrets) {
+    if (!secret) continue;
+
+    const variants = new Set([secret, JSON.stringify(secret).slice(1, -1)]);
+    for (const variant of variants) {
+      if (!variant) continue;
+      output = output.split(variant).join(REDACTED);
+    }
+  }
+
+  return output;
+}
+
+function extractOpStderr(error: unknown): string {
+  if (!error || typeof error !== 'object') return '';
+  const stderr = (error as { stderr?: Buffer | string }).stderr;
+  return stderr ? String(stderr).trim() : '';
+}
+
+function extractExitStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+/**
+ * Build the message for a failed write. `error.message` from `execFileSync`
+ * embeds the full argv, so it is deliberately never used here: the command is
+ * reconstructed from the redacted args instead, and only stderr is quoted.
+ */
+function buildOpWriteErrorMessage(
+  label: string,
+  args: readonly string[],
+  error: unknown,
+  secrets: readonly string[]
+): string {
+  const parts = [`${label}: \`${describeOpCommand(args)}\` failed`];
+
+  const status = extractExitStatus(error);
+  if (status !== undefined) {
+    parts.push(`(exit code ${status})`);
+  }
+
+  const stderr = redactSecretValues(extractOpStderr(error), secrets);
+  const firstLine = stderr.split('\n')[0]?.trim();
+  if (firstLine) {
+    parts.push(`- ${firstLine}`);
+  }
+
+  return parts.join(' ');
+}
+
+export interface SecretWriterDeps {
+  execFileSync: typeof execFileSync;
+  getEnv: () => NodeJS.ProcessEnv;
+  getItemDocument: (title: string, vault: string) => OpItemDocument | null;
+}
+
+const ITEM_NOT_FOUND_PATTERNS = [
+  /isn't an item/i,
+  /no item matches/i,
+  /no items matched/i,
+  /doesn't exist/i,
+  /not found/i,
+];
+
+function isItemNotFoundError(error: unknown): boolean {
+  const stderr = extractOpStderr(error);
+  return ITEM_NOT_FOUND_PATTERNS.some((pattern) => pattern.test(stderr));
+}
+
+/**
+ * Fetch an item as a raw JSON document suitable for round-tripping back into
+ * `op item edit`. `getItem` narrows to OpItem; edits need every key `op`
+ * emitted, including ones this codebase does not model.
+ *
+ * Only a genuine "no such item" returns null. Every other failure -- an expired
+ * session, a mistyped vault, a network error -- is raised, because callers
+ * treat null as "does not exist yet" and would otherwise create a second item
+ * holding the secret while the real one sat untouched.
+ */
+export function getItemDocument(
+  title: string,
+  vault: string = 'Private'
+): OpItemDocument | null {
+  const env = getOpEnv();
+  const retryOpts = { ...globalRetryOptions, isRetryable: isOpErrorRetryable };
+
+  try {
+    return withRetrySync(() => {
+      const output = execFileSync(
+        'op',
+        ['item', 'get', title, '--vault', vault, '--format=json'],
+        { encoding: 'utf-8', stdio: 'pipe', env }
+      );
+      const parsed = JSON.parse(output);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as OpItemDocument)
+        : null;
+    }, retryOpts);
+  } catch (error: unknown) {
+    if (isItemNotFoundError(error)) {
+      return null;
+    }
+
+    const detail = extractOpStderr(error).split('\n')[0]?.trim();
+    throw new OpError(
+      `Failed to read "${title}" from vault "${vault}"${detail ? `: ${detail}` : ''}`,
+      1
+    );
+  }
+}
+
+/**
+ * Build the item JSON template for a create.
+ *
+ * `op` validates templates more strictly than assignment statements: a
+ * PASSWORD item is rejected unless its built-in password field carries a
+ * non-empty value. Anything that cannot satisfy that (a custom field name, or
+ * an empty value) is created as an API_CREDENTIAL instead, which accepts a
+ * single named concealed field and stays readable at `op://<vault>/<item>/<field>`.
+ */
+function buildCreateTemplate(
+  title: string,
+  value: string,
+  field: string
+): OpItemDocument {
+  const normalized = normalizeFieldName(field);
+
+  if (normalized === 'password' && value !== '') {
+    return {
+      title,
+      category: 'PASSWORD',
+      fields: [
+        {
+          id: 'password',
+          type: CONCEALED_FIELD_TYPE,
+          purpose: 'PASSWORD',
+          label: 'password',
+          value,
+        },
+      ],
+    };
+  }
+
+  if (normalized === 'notesplain') {
+    return {
+      title,
+      category: 'SECURE_NOTE',
+      fields: [
+        {
+          id: 'notesPlain',
+          type: 'STRING',
+          purpose: 'NOTES',
+          label: 'notesPlain',
+          value,
+        },
+      ],
+    };
+  }
+
+  if (normalized === 'credential') {
+    return {
+      title,
+      category: 'API_CREDENTIAL',
+      fields: [
+        { id: 'credential', type: CONCEALED_FIELD_TYPE, label: 'credential', value },
+      ],
+    };
+  }
+
+  return {
+    title,
+    category: 'API_CREDENTIAL',
+    fields: [{ label: field, type: CONCEALED_FIELD_TYPE, value }],
+  };
+}
+
+const MASK_CHARACTERS = /^[*•·●]+$/;
+
+/**
+ * `op item get --format=json` returns concealed values in plaintext, which is
+ * what makes the round-trip below safe (and is what `op`'s own documented
+ * item-duplication workflow relies on). If that ever stops being true, writing
+ * the document back would replace every other concealed field with its mask, so
+ * detect a masked value and refuse instead of destroying the item.
+ */
+function hasMaskedFieldValue(document: OpItemDocument): boolean {
+  const fields = Array.isArray(document.fields)
+    ? (document.fields as OpItemDocumentField[])
+    : [];
+
+  return fields.some(
+    (field) =>
+      typeof field.value === 'string' &&
+      field.value.length > 0 &&
+      MASK_CHARACTERS.test(field.value)
+  );
+}
+
+/**
+ * Passkeys arrive from `op item get --format=json` as a valueless field of type
+ * `UNKNOWN`, and `op item edit --help` states plainly that a JSON template will
+ * overwrite a passkey. Round-tripping such an item turns the passkey into an
+ * empty STRING field and destroys the credential, so detect and refuse it.
+ */
+function hasUnrepresentableField(document: OpItemDocument): boolean {
+  const fields = Array.isArray(document.fields)
+    ? (document.fields as OpItemDocumentField[])
+    : [];
+
+  return fields.some(
+    (field) => String(field.type ?? '').toUpperCase() === 'UNKNOWN'
+  );
+}
+
+/**
+ * A JSON template replaces the item it is applied to, so anything the template
+ * cannot carry would be destroyed by the round-trip. Refuse those items rather
+ * than silently dropping part of them.
+ */
+function assertDocumentIsTemplateSafe(
+  document: OpItemDocument,
+  title: string
+): void {
+  const files = document.files;
+  const hasFiles = Array.isArray(files) && files.length > 0;
+  const isDocument = String(document.category ?? '').toUpperCase() === 'DOCUMENT';
+
+  if (hasFiles || isDocument) {
+    throw new OpError(
+      `Refusing to update "${title}": a JSON template cannot carry file attachments, so the write would drop them. Update it in the 1Password app instead.`,
+      1
+    );
+  }
+
+  if (hasUnrepresentableField(document)) {
+    throw new OpError(
+      `Refusing to update "${title}": the item holds a field the op CLI cannot round-trip through a JSON template, such as a passkey, and the write would destroy it. Update it in the 1Password app instead.`,
+      1
+    );
+  }
+
+  if (hasMaskedFieldValue(document)) {
+    throw new OpError(
+      `Refusing to update "${title}": the op CLI returned masked field values, so writing the item back would overwrite its other fields with the mask. Update your op CLI, or edit the item in the 1Password app.`,
+      1
+    );
+  }
+}
+
+function applyFieldValueToDocument(
+  document: OpItemDocument,
+  field: string,
+  value: string
+): void {
+  const fields: OpItemDocumentField[] = Array.isArray(document.fields)
+    ? (document.fields as OpItemDocumentField[])
+    : [];
+  const normalized = normalizeFieldName(field);
+
+  const target = fields.find(
+    (candidate) =>
+      normalizeFieldName(candidate.id) === normalized ||
+      normalizeFieldName(candidate.label) === normalized
+  );
+
+  if (target) {
+    target.value = value;
+  } else {
+    fields.push({ label: field, type: CONCEALED_FIELD_TYPE, value });
+  }
+
+  document.fields = fields;
+}
+
+function runOpWrite(
+  args: readonly string[],
+  input: string,
+  secrets: readonly string[],
+  label: string,
+  deps: SecretWriterDeps
+): void {
+  try {
+    deps.execFileSync('op', [...args], {
+      input,
+      stdio: 'pipe',
+      env: deps.getEnv(),
+    });
+  } catch (error: unknown) {
+    throw new OpError(buildOpWriteErrorMessage(label, args, error, secrets), 1);
+  }
+}
+
+function createItemWithDeps(
+  title: string,
+  value: string,
+  vault: string,
+  field: string,
+  label: string,
+  deps: SecretWriterDeps
+): void {
+  const template = buildCreateTemplate(title, value, field);
+  runOpWrite(
+    ['item', 'create', '-', '--vault', vault],
+    JSON.stringify(template),
+    [value],
+    label,
+    deps
+  );
+}
+
+function updateItemWithDeps(
+  title: string,
+  value: string,
+  vault: string,
+  field: string,
+  label: string,
+  deps: SecretWriterDeps,
+  document?: OpItemDocument
+): void {
+  const target = document ?? deps.getItemDocument(title, vault);
+
+  if (!target) {
+    throw new OpError(
+      `${label}: item "${title}" was not found in vault "${vault}"`,
+      1
+    );
+  }
+
+  assertDocumentIsTemplateSafe(target, title);
+  applyFieldValueToDocument(target, field, value);
+
+  const itemRef =
+    typeof target.id === 'string' && target.id.length > 0 ? target.id : title;
+
+  runOpWrite(
+    ['item', 'edit', itemRef, '--vault', vault],
+    JSON.stringify(target),
+    [value],
+    label,
+    deps
+  );
+}
+
+function setSecretWithDeps(
+  title: string,
+  value: string,
+  vault: string,
+  field: string,
+  deps: SecretWriterDeps
+): void {
+  const label = 'Failed to set secret';
+  const existing = deps.getItemDocument(title, vault);
+
+  if (existing) {
+    updateItemWithDeps(title, value, vault, field, label, deps, existing);
+    return;
+  }
+
+  createItemWithDeps(title, value, vault, field, label, deps);
+}
+
+/**
+ * Build the secret-write functions over injectable dependencies. Production
+ * code uses the default writer below; tests use this to observe the exact argv
+ * and stdin handed to `op`.
+ */
+export function createSecretWriter(overrides: Partial<SecretWriterDeps> = {}): {
+  setSecret: typeof setSecret;
+  createItem: typeof createItem;
+  updateItem: typeof updateItem;
+} {
+  const deps: SecretWriterDeps = {
+    execFileSync,
+    getEnv: getOpEnv,
+    getItemDocument,
+    ...overrides,
+  };
+
+  return {
+    setSecret: (title, value, vault = 'Private', field = 'password') =>
+      setSecretWithDeps(title, value, vault, field, deps),
+    createItem: (title, value, vault = 'Private', field = 'password') =>
+      createItemWithDeps(title, value, vault, field, 'Failed to create secret', deps),
+    updateItem: (title, value, vault = 'Private', field = 'password') =>
+      updateItemWithDeps(title, value, vault, field, 'Failed to update secret', deps),
+  };
+}
+
+const defaultSecretWriter = createSecretWriter();
+
 /**
  * Create or update a secret in 1Password
  */
@@ -514,30 +965,7 @@ export function setSecret(
   vault: string = 'Private',
   field: string = 'password'
 ): void {
-  const env = getOpEnv();
-  
-  try {
-    // Check if item exists
-    const existing = getSecret(title, vault, field);
-
-    if (existing) {
-      // Update existing item using execFileSync (safe from injection)
-      execFileSync(
-        'op',
-        ['item', 'edit', title, '--vault', vault, `${field}=${value}`],
-        { stdio: 'pipe', env }
-      );
-    } else {
-      // Create new item using execFileSync (safe from injection)
-      execFileSync(
-        'op',
-        ['item', 'create', '--category=password', '--title', title, '--vault', vault, `${field}=${value}`],
-        { stdio: 'pipe', env }
-      );
-    }
-  } catch (error: any) {
-    throw new OpError(`Failed to set secret: ${error.message}`, 1);
-  }
+  defaultSecretWriter.setSecret(title, value, vault, field);
 }
 
 /**
@@ -549,26 +977,7 @@ export function createItem(
   vault: string = 'Private',
   field: string = 'password'
 ): void {
-  const env = getOpEnv();
-
-  try {
-    execFileSync(
-      'op',
-      [
-        'item',
-        'create',
-        '--category=password',
-        '--title',
-        title,
-        '--vault',
-        vault,
-        `${field}=${value}`,
-      ],
-      { stdio: 'pipe', env }
-    );
-  } catch (error: any) {
-    throw new OpError(`Failed to create secret: ${error.message}`, 1);
-  }
+  defaultSecretWriter.createItem(title, value, vault, field);
 }
 
 /**
@@ -580,17 +989,7 @@ export function updateItem(
   vault: string = 'Private',
   field: string = 'password'
 ): void {
-  const env = getOpEnv();
-
-  try {
-    execFileSync(
-      'op',
-      ['item', 'edit', title, '--vault', vault, `${field}=${value}`],
-      { stdio: 'pipe', env }
-    );
-  } catch (error: any) {
-    throw new OpError(`Failed to update secret: ${error.message}`, 1);
-  }
+  defaultSecretWriter.updateItem(title, value, vault, field);
 }
 
 /**
