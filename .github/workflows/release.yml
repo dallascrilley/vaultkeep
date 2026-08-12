@@ -3,17 +3,19 @@ name: Release
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: write
   issues: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     # Only run if not a [skip ci] commit
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    if: "github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip ci]')"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,14 +27,27 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
+      # npm >= 11.5.1 is required for OIDC trusted publishing
+      - run: npm install -g npm@latest
+
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
 
+      # Publishes package.json's version if the registry is behind git —
+      # heals the state semantic-release leaves when the npm publish step
+      # fails after the release commit and tag were already pushed.
+      - name: Catch-up publish
+        run: |
+          V="$(node -p "require('./package.json').version")"
+          if npm view "dc-ops-cli@${V}" version >/dev/null 2>&1; then
+            echo "dc-ops-cli@${V} already on npm; nothing to catch up"
+          else
+            npm publish
+          fi
+
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
