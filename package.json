@@ -1,6 +1,6 @@
 {
   "name": "dc-ops-cli",
-  "version": "1.14.2",
+  "version": "1.14.3",
   "description": "Vaultkeep: fetch, inject, and export 1Password secrets from the command line",
   "type": "module",
   "main": "dist/index.js",

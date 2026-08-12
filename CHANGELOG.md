@@ -1,3 +1,10 @@
+## [1.14.3](https://github.com/dallascrilley/vaultkeep/compare/v1.14.2...v1.14.3) (2026-08-12)
+
+
+### Bug Fixes
+
+* keep secret values out of argv and error output; honor clipboard TTL ([#38](https://github.com/dallascrilley/vaultkeep/issues/38)) ([1676ada](https://github.com/dallascrilley/vaultkeep/commit/1676ada23c37b08ac1488a29275ea10cf02b41d4))
+
 ## [1.14.2](https://github.com/dallascrilley/vaultkeep/compare/v1.14.1...v1.14.2) (2026-01-28)
 
 
