@@ -1,5 +1,5 @@
 /**
- * Integration tests for ops-cli
+ * Integration tests for Vaultkeep
  *
  * These tests run against a real 1Password vault.
  *
@@ -131,7 +131,7 @@ function cleanupTestVault(): void {
 }
 
 // Main test suite
-describe('ops-cli integration tests', { skip: !shouldRun }, () => {
+describe('Vaultkeep integration tests', { skip: !shouldRun }, () => {
   before(() => {
     if (!opCliAvailable()) {
       console.log('⚠️  1Password CLI (op) not available. Skipping integration tests.');

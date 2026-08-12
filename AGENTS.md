@@ -1,4 +1,4 @@
-# ops-cli Agent Instructions
+# Vaultkeep Agent Instructions
 
 Quick reference for AI coding agents working on this project.
 

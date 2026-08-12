@@ -1,8 +1,8 @@
-# ops-cli Development Guide
+# Vaultkeep Development Guide
 
 ## Project Overview
 
-ops-cli (`ops` command) is a 1Password CLI wrapper providing smart secret retrieval with auto-prompts and field detection. Published to npm as `dc-ops-cli`.
+Vaultkeep (`ops` command) is a 1Password CLI wrapper providing smart secret retrieval with auto-prompts and field detection. Published to npm as `dc-ops-cli`.
 
 ## Tech Stack
 
@@ -83,7 +83,7 @@ npm run release:ci   # Actual release (CI only)
 ## Project Structure
 
 ```
-ops-cli/
+vaultkeep/
 ├── src/
 │   ├── index.ts           # CLI entry point (commander setup)
 │   ├── commands/          # Command implementations
