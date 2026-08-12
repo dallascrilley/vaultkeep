@@ -56,7 +56,7 @@ const program = new Command();
 
 program
   .name('ops')
-  .description('Easy secret retrieval from 1Password with smart fallbacks')
+  .description('Vaultkeep: fetch, inject, and export 1Password secrets from the command line')
   .version(pkg.version)
   .addHelpCommand()
   .showHelpAfterError()
