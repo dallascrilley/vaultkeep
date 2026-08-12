@@ -19,8 +19,7 @@ and are staying, so existing installs and scripts keep working.
 ## In 30 seconds
 
 ```bash
-git clone https://github.com/dallascrilley/vaultkeep.git
-cd vaultkeep && npm install && npm run build && npm link
+npm install -g dc-ops-cli
 
 ops get GITHUB_TOKEN                   # read one secret
 ops run -- npm start                   # inject a .env.ops mapping into a process
@@ -63,7 +62,16 @@ Jump to [Installation](#installation), the
 
 ## Installation
 
-**From source** (recommended until `dc-ops-cli@1.14.3` or newer is on npm):
+**From npm** (package name `dc-ops-cli`, binary `ops`):
+
+```bash
+npm install -g dc-ops-cli
+```
+
+Requires Node.js 22+. The published name stays `dc-ops-cli` / `ops` so existing
+scripts keep working after the Vaultkeep rebrand.
+
+**From source:**
 
 ```bash
 git clone https://github.com/dallascrilley/vaultkeep.git
@@ -71,24 +79,12 @@ cd vaultkeep
 npm install && npm run build && npm link
 ```
 
-**From npm** (package name `dc-ops-cli`, binary `ops`):
-
-```bash
-npm install -g dc-ops-cli
-```
-
-npm still serves **1.14.2** (January 2026). That build predates the Vaultkeep
-rebrand and the security fixes in this tree: secret values on `op` argv, world-readable
-export files, and a clipboard clear race on `ops copy`. Prefer the source install
-above until `npm view dc-ops-cli version` reports **1.14.3** or higher. The
-installed name stays `dc-ops-cli` / `ops` so existing scripts keep working.
-
 ## Update
 
 ```bash
-git pull && npm install && npm run build   # source install
-# or, once 1.14.3+ is on npm:
 npm install -g dc-ops-cli@latest
+# or, for a source install:
+git pull && npm install && npm run build
 ```
 
 ## Prerequisites
