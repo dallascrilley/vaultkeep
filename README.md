@@ -51,6 +51,16 @@ Jump to [Installation](#installation), the
 - 🔒 **Quiet by default** - Secret values go to stdout only when you ask for them
 - ⌨️ **Shell completion** - Tab completion for bash, zsh, and fish
 
+## Requirements
+
+- **Node.js 22 or newer.** This is declared in `package.json` (`engines.node:
+  ">=22.0.0"`), so `npm install -g dc-ops-cli` warns on older Node and fails
+  outright under `npm config set engine-strict true`. Node 22 is also the only
+  version CI builds and tests against. Check yours with `node --version`.
+- **The 1Password CLI (`op`)**, installed and signed in. See
+  [Prerequisites](#prerequisites).
+- macOS, Linux, or Windows.
+
 ## Installation
 
 ```bash
@@ -78,8 +88,9 @@ ops update --force
 
 ## Prerequisites
 
-1. Install [1Password CLI](https://1password.com/downloads/command-line/)
-2. Sign in: `op signin`
+1. Node.js 22 or newer (`node --version`) - see [Requirements](#requirements)
+2. Install [1Password CLI](https://1password.com/downloads/command-line/)
+3. Sign in: `op signin`
 
 ### Service Account (Headless/CI)
 
@@ -248,6 +259,12 @@ ops export --vault Work --output work.env
 ops export --filter "API_*"
 ops export --filter "*_TOKEN" --output tokens.env
 ```
+
+A file written with `--output` holds plaintext secrets, so `ops export` creates
+it with mode `0600` (owner read/write only) and narrows an existing file to
+`0600` as well. It is still a plaintext secrets file: keep it out of version
+control and delete it when you are done. Prefer `ops run` when a process only
+needs the values in its environment.
 
 ### Import secrets
 
@@ -560,24 +577,75 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 
 ## Commands Reference
 
+This table mirrors `ops --help` and each subcommand's `--help` for the current
+version. If it ever disagrees with the CLI, the CLI is right - please open an
+issue.
+
+### Global options
+
+Accepted before the subcommand (`ops --retry 5 get TOKEN`):
+
+| Option | Description |
+|--------|-------------|
+| `-V, --version` | Print the version |
+| `-h, --help` | Show help for `ops` or for any subcommand |
+| `--retry <count>` | Max retry attempts for transient failures (default `3`, env `OPS_RETRY_COUNT`) |
+| `--no-retry` | Disable retry logic entirely (env `OPS_NO_RETRY=1`) |
+
+Two options recur on nearly every subcommand and are listed per command below:
+
+- `-q, --quiet` - suppress non-essential output (spinners, summaries). Also
+  `OPS_QUIET=1`. Not available on `run`, `interactive`, or `update`.
+- `--no-color` - disable ANSI color. Also `OPS_NO_COLOR=1` or the standard
+  `NO_COLOR`. Not available on `update`.
+
+### Commands
+
 | Command | Description | Options |
 |---------|-------------|---------|
-| `get <name>` | Get a secret (supports `KEY=fallback`) | `-v, --vault`, `-f, --field`, `--plain`, `--json`, `-s, --silent`, `--no-input` |
-| `get-many <names...>` | Get multiple secrets (alias: `gets`) | `-v, --vault`, `-f, --field`, `--json`, `--plain` |
-| `set <name>` | Store a secret (supports `KEY=VALUE`) | `-v, --vault`, `-f, --field`, `--value`, `--value-file`, `-y, --force`, `--no-input` |
-| `copy <name>` | Copy a secret to clipboard | `-v, --vault`, `-f, --field`, `--ttl`, `-q, --quiet` |
-| `list` | List vault items | `-v, --vault`, `-s, --search`, `-j, --json`, `--plain`, `--favorites` |
-| `search <query>` | Search items by title | `-v, --vault`, `-j, --json`, `--plain` |
-| `favorites` | List favorite items | `-v, --vault`, `-j, --json`, `--plain` |
-| `export` | Export to .env/JSON | `-v, --vault`, `-f, --format`, `-j, --json`, `-o, --output`, `--filter` |
-| `import [file]` | Import secrets from .env or stdin | `-v, --vault`, `--dry-run` |
-| `run` | Run a command with secrets injected | `-v, --vault`, `-f, --field`, `-e, --env`, `--env-file`, `--verbose` |
-| `resolve <shareLink>` | Resolve share link to ops reference | `-j, --json` |
-| `inspect <name>` | Show available fields for a secret | `-v, --vault`, `-j, --json` |
-| `vaults` | List available vaults | `-j, --json` |
-| `whoami` | Show session and account info | `-j, --json`, `-q, --quiet` |
-| `update` | Update ops to latest version | `-c, --check`, `--force` |
-| `completion [shell]` | Generate shell completion script | Shells: `bash`, `zsh`, `fish` |
+| `get <name>` | Get a secret (supports `KEY=fallback`) | `-v, --vault`, `-f, --field`, `-s, --silent`, `--plain`, `--json`, `--no-input`, `-q, --quiet`, `--no-color` |
+| `get-many <names...>` | Get multiple secrets (alias: `gets`; `-` reads names from stdin) | `-v, --vault`, `-f, --field`, `-j, --json`, `-e, --env`, `--plain`, `--parallel <count>`, `--continue-on-error`, `-q, --quiet`, `--no-color` |
+| `inspect <name>` | Show available fields for an item | `-v, --vault`, `-j, --json`, `-q, --quiet`, `--no-color` |
+| `set <name>` | Store a secret (supports `KEY=VALUE`) | `-v, --vault`, `-f, --field`, `--value <value>`, `--value-file <file>`, `-y, --force`, `--no-input`, `-q, --quiet`, `--no-color` |
+| `run <command...>` | Run a command with secrets injected into its environment | `-v, --vault`, `-f, --field`, `-e, --env <pair>`, `--env-file <file>`, `--parallel <count>`, `--verbose`, `--no-color` |
+| `copy <name>` | Copy a secret to the clipboard and clear it after a delay | `-v, --vault`, `-f, --field`, `--ttl <seconds>`, `-q, --quiet`, `--no-color` |
+| `list` | List all items in a vault | `-v, --vault`, `-s, --search <query>`, `-j, --json`, `--plain`, `--favorites`, `-q, --quiet`, `--no-color` |
+| `search <query>` | Search items by title in a vault | `-v, --vault`, `-j, --json`, `--plain`, `-q, --quiet`, `--no-color` |
+| `favorites` | List favorite items in a vault | `-v, --vault`, `-j, --json`, `--plain`, `-q, --quiet`, `--no-color` |
+| `vaults` | List available vaults | `-j, --json`, `-q, --quiet`, `--no-color` |
+| `export` | Export secrets as .env or JSON | `-v, --vault`, `-f, --format <env\|json>`, `-j, --json`, `-o, --output <file>`, `--filter <pattern>`, `-q, --quiet`, `--no-color` |
+| `import [file]` | Import secrets from a .env file (`-` for stdin) | `-v, --vault`, `--dry-run`, `-q, --quiet`, `--no-color` |
+| `resolve <shareLink>` | Resolve a 1Password share link to ops references | `-j, --json`, `-q, --quiet`, `--no-color` |
+| `interactive` | Browse vaults and items interactively (alias: `i`) | `-v, --vault`, `-f, --field`, `--no-color` |
+| `whoami` | Show current 1Password account and vault info | `-j, --json`, `-q, --quiet`, `--no-color` |
+| `completion [shell]` | Generate a completion script (`bash`, `zsh`, `fish`) | `-q, --quiet`, `--no-color` |
+| `update` | Update ops to the latest version | `-c, --check`, `--force` |
+| `template list` | List available templates | `-j, --json`, `-q, --quiet`, `--no-color` |
+| `template apply <name>` | Apply a template and create its secrets | `-v, --vault`, `-f, --field`, `--value <pair>`, `--no-input`, `-q, --quiet`, `--no-color` |
+| `template create <name>` | Create a custom template | `--fields <fields>`, `--description <description>`, `-y, --force`, `-q, --quiet`, `--no-color` |
+
+### `op` passthrough
+
+Anything `ops` does not recognize is forwarded to the 1Password CLI, so you do
+not have to switch binaries mid-script:
+
+```bash
+ops op vault list        # explicit passthrough
+ops item list --vault Work   # unknown command, forwarded to `op`
+```
+
+### Environment variables
+
+| Variable | Effect |
+|----------|--------|
+| `OPS_VAULT` | Default vault (otherwise `Private`) |
+| `OPS_FIELD` | Default field (otherwise `password`) |
+| `OPS_QUIET` | Same as `-q, --quiet` |
+| `OPS_NO_COLOR` / `NO_COLOR` | Same as `--no-color` |
+| `OPS_RETRY_COUNT` | Same as `--retry <count>` |
+| `OPS_NO_RETRY` | Same as `--no-retry` |
+| `OPS_CONFIG` | Path to an alternate `.opsrc` |
+| `OPS_NO_SESSION_CACHE` / `OPS_SESSION_CACHE=0` | Disable the session token cache |
 
 ## Development
 

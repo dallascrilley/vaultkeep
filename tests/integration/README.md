@@ -1,6 +1,6 @@
 # Integration Tests
 
-Integration tests for ops-cli that run against a real 1Password vault.
+Integration tests for Vaultkeep that run against a real 1Password vault.
 
 ## Prerequisites
 

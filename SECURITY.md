@@ -59,6 +59,20 @@ dumps secret values. All diagnostic output goes to stdout and stderr only, and
 the sole file writes are the two caches described below plus the export file
 you explicitly request with `--output`.
 
+### The export file is created owner-only
+
+`ops export --output FILE` writes plaintext secrets, so it creates `FILE` with
+mode `0600` and chmods an existing file down to `0600` before it can be read
+(`src/commands/export.ts`). That closes the umask gap where a fresh `.env`
+landed world-readable on a shared machine.
+
+Mode `0600` is the floor, not a guarantee. It does not protect the file from
+root, from another process running as you, from a backup or sync agent, or from
+the directory it sits in being group-writable. Treat the file as a secret:
+delete it when you are done and keep it out of version control. When a process
+only needs values in its environment, prefer `ops run`, which writes no file at
+all.
+
 ### What is cached on disk
 
 Two files, both created with mode `0600` inside a directory created `0700`:
@@ -157,7 +171,7 @@ your machine.
 - Keep the `op` CLI current; Vaultkeep inherits its security properties.
 - Prefer `ops run` over `ops export` when a process just needs values in its
   environment. It avoids a plaintext file on disk.
-- Treat any file produced by `ops export` as a secret. Delete it when done and
-  keep it out of version control.
+- Treat any file produced by `ops export` as a secret. It is created `0600`,
+  but delete it when done and keep it out of version control.
 - Set `OPS_NO_SESSION_CACHE=1` on shared or long-lived machines.
 - Prefer service accounts with least-privilege vault access for automation.

@@ -102,7 +102,7 @@ function isOpsGlobalOptionToken(token: string): boolean {
  * Route `ops ...` invocations:
  * - `ops <unknown>` => pass-through to `op <unknown>`
  * - `ops op ...` => explicit pass-through to `op ...`
- * - Keep existing ops-cli commands as-is (notably `run` + `template`).
+ * - Keep existing Vaultkeep commands as-is (notably `run` + `template`).
  */
 export function resolveOpCompatRoute(argv: string[]): OpCompatRoute {
   if (argv.length === 0) return { route: 'ops' };
