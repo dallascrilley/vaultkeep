@@ -401,10 +401,13 @@ npm run build
 
 ### Distribution Options
 
-**Option A: npm package** (current distribution)
+**Option A: npm package**
 ```bash
 npm install -g dc-ops-cli
 ```
+Note: the npm release currently lags this repository; see the caveat in the
+top-level [README's Installation section](../README.md#installation) before
+recommending this path.
 
 **Option B: Standalone binary**
 ```bash

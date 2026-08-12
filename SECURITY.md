@@ -14,8 +14,10 @@ password or secret key.
 ## Reporting a vulnerability
 
 Please report security issues privately to **dallas@dallascrilley.com** rather
-than opening a public issue. Include the version (`ops --version`), your OS,
-and reproduction steps.
+than opening a public issue. Include the version (`ops --version`), whether you
+installed from npm or built from source (the npm build currently lags this
+repository, and both print the same version string, so the install path is the
+disambiguator), your OS, and reproduction steps.
 
 Use [GitHub issues](https://github.com/dallascrilley/vaultkeep/issues) for
 ordinary bugs and feature requests that carry no security impact.
