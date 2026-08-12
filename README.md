@@ -1,8 +1,35 @@
-# ops - 1Password CLI Helper
+# Vaultkeep
+
+Fetch, inject, and export 1Password secrets from the command line.
 
 [![npm version](https://img.shields.io/npm/v/dc-ops-cli.svg)](https://www.npmjs.com/package/dc-ops-cli)
+[![CI](https://github.com/dallascrilley/vaultkeep/actions/workflows/ci.yml/badge.svg)](https://github.com/dallascrilley/vaultkeep/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Easy secret retrieval from 1Password with smart fallbacks and interactive prompts.
+I wrote Vaultkeep because I kept doing two things I could not defend: pasting
+secrets into `.env` files by hand, and memorizing `op://` references so I would
+not have to. Vaultkeep wraps the
+[1Password CLI](https://1password.com/downloads/command-line/) so a secret can
+be read, injected into a running process, or written out to a file in one
+command, without ever landing somewhere I might commit it.
+
+**On the names.** The project is Vaultkeep. It is published on npm as
+`dc-ops-cli`, and the installed binary is `ops`. Both names predate the rebrand
+and are staying, so existing installs and scripts keep working.
+
+## In 30 seconds
+
+```bash
+npm install -g dc-ops-cli
+
+ops get GITHUB_TOKEN                   # read one secret
+ops run -- npm start                   # inject a .env.ops mapping into a process
+ops export --vault Work --output .env  # write a real .env when a tool demands one
+```
+
+Jump to [Installation](#installation), the
+[commands reference](#commands-reference), the
+[technical docs](docs/README.md), or the [license](LICENSE).
 
 ## Features
 
@@ -20,8 +47,8 @@ Easy secret retrieval from 1Password with smart fallbacks and interactive prompt
 - 🔍 **Inspect** - Discover available fields for any secret
 - 🏦 **Vaults** - List and browse available vaults
 - 💡 **Smart suggestions** - Get hints when secrets or fields aren't found
-- 🎨 **Beautiful UI** - Colored output and progress indicators
-- 🔒 **Secure** - Never exposes secrets in logs or chat
+- 🎨 **Readable output** - Colored output and progress indicators
+- 🔒 **Quiet by default** - Secret values go to stdout only when you ask for them
 - ⌨️ **Shell completion** - Tab completion for bash, zsh, and fish
 
 ## Installation
@@ -31,8 +58,8 @@ Easy secret retrieval from 1Password with smart fallbacks and interactive prompt
 npm install -g dc-ops-cli
 
 # Or install from source
-git clone https://github.com/dallascrilley/op-cli-helper.git
-cd op-cli-helper
+git clone https://github.com/dallascrilley/vaultkeep.git
+cd vaultkeep
 npm install && npm run build && npm link
 ```
 
@@ -467,9 +494,9 @@ npm run build        # Compile to dist/
 npm test             # Run all tests
 ```
 
-## Integration with AGENTS.md Pattern
+## Agent and script integration
 
-This tool follows the pattern in §13 of AGENTS.md:
+The pattern I use in agent instructions and setup scripts:
 
 ```bash
 # 1. Check 1Password first
@@ -554,6 +581,14 @@ npm run typecheck
 npm run build
 ```
 
+## More documentation
+
+- [docs/README.md](docs/README.md) - architecture, code structure, testing strategy
+- [QUICKSTART.md](QUICKSTART.md) - five minute walkthrough
+- [EXAMPLES.md](EXAMPLES.md) - longer worked examples
+- [CHANGELOG.md](CHANGELOG.md) - release history
+- [docs/TESTING_REPORT.md](docs/TESTING_REPORT.md) and [docs/FRICTION_REPORT.md](docs/FRICTION_REPORT.md) - the manual test pass and friction log that drove several releases
+
 ## License
 
-MIT
+[MIT](LICENSE). Copyright (c) 2026 Dallas Crilley.

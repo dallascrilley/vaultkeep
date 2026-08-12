@@ -1,7 +1,7 @@
 {
   "name": "dc-ops-cli",
   "version": "1.14.2",
-  "description": "Easy secret retrieval from 1Password with smart fallbacks",
+  "description": "Vaultkeep: fetch, inject, and export 1Password secrets from the command line",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -15,7 +15,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dallascrilley/op-cli-helper.git"
+    "url": "https://github.com/dallascrilley/vaultkeep.git"
+  },
+  "homepage": "https://github.com/dallascrilley/vaultkeep#readme",
+  "bugs": {
+    "url": "https://github.com/dallascrilley/vaultkeep/issues"
   },
   "scripts": {
     "build:bin": "bun build --compile src/index.ts --outfile bin/ops",
@@ -37,7 +41,7 @@
     "cli",
     "security"
   ],
-  "author": "",
+  "author": "Dallas Crilley",
   "license": "MIT",
   "dependencies": {
     "ajv": "^8.17.1",

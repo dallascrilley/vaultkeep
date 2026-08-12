@@ -1,6 +1,6 @@
 # Technical Documentation
 
-Developer and architecture documentation for `op-cli-helper`.
+Developer and architecture documentation for Vaultkeep (published on npm as `dc-ops-cli`, installed as the `ops` binary).
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ Developer and architecture documentation for `op-cli-helper`.
 
 ### Overview
 
-`op-cli-helper` is a TypeScript CLI wrapper around the 1Password CLI (`op`), providing:
+Vaultkeep is a TypeScript CLI wrapper around the 1Password CLI (`op`), providing:
 
 1. **Smart fallback prompts** - Auto-create secrets if not found
 2. **Service account support** - Reads `OP_SERVICE_ACCOUNT_TOKEN` from `~/.config/op/sa_token`
@@ -45,7 +45,7 @@ Developer and architecture documentation for `op-cli-helper`.
 ## Code Structure
 
 ```
-op-cli-helper/
+vaultkeep/
 ├── src/
 │   ├── index.ts              # CLI entry point, command registration
 │   ├── commands/             # Command implementations
@@ -401,10 +401,9 @@ npm run build
 
 ### Distribution Options
 
-**Option A: npm package**
+**Option A: npm package** (current distribution)
 ```bash
-npm publish
-npm install -g op-cli-helper
+npm install -g dc-ops-cli
 ```
 
 **Option B: Standalone binary**
