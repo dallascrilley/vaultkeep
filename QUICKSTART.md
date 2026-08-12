@@ -3,7 +3,8 @@
 ## Installation
 
 ```bash
-cd op-cli-helper
+git clone https://github.com/dallascrilley/vaultkeep.git
+cd vaultkeep
 npm install
 npm run build
 npm link  # Install globally
