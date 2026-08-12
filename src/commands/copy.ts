@@ -129,15 +129,20 @@ export function createCopyCommand(
       process.once('SIGINT', handleSignal);
       process.once('SIGTERM', handleSignal);
 
-      // Schedule automatic cleanup after TTL
-      const timeoutId = setTimeout(async () => {
+      // Schedule automatic cleanup after TTL.
+      //
+      // This timer is deliberately NOT unref()'d. README documents that `ops
+      // copy` "confirms when it clears the clipboard after the TTL expires",
+      // which is only possible if the process is still running when the timer
+      // fires. An unref()'d timer never fires in a one-shot invocation, because
+      // nothing else holds the event loop open, so the secret stayed on the
+      // clipboard indefinitely. Holding the loop open until the TTL is what
+      // makes the documented behavior true.
+      setTimeout(async () => {
         process.off('SIGINT', handleSignal);
         process.off('SIGTERM', handleSignal);
         await clearClipboard();
       }, ttlSeconds * 1000);
-
-      // Prevent timeout from keeping process alive if it's the only thing left
-      timeoutId.unref();
     } catch (error) {
       if (error instanceof OpError) {
         console.error(chalk.red(`Error: ${error.message}`));

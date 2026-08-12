@@ -175,6 +175,11 @@ ops copy GITHUB_TOKEN
 ops copy GITHUB_TOKEN --ttl 10
 ```
 
+`ops copy` stays in the foreground until the TTL expires so it can clear the
+clipboard and confirm it. Press `Ctrl-C` to clear immediately, or run it in the
+background (`ops copy GITHUB_TOKEN &`) if you need the prompt back right away.
+The clear is skipped if you have copied something else in the meantime.
+
 ### List secrets
 
 ```bash
