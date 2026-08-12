@@ -22,10 +22,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # No registry-url here: setup-node would write an .npmrc with a
+      # placeholder auth token, which preempts the OIDC trusted-publishing
+      # exchange and breaks publish.
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
 
       # npm >= 11.5.1 is required for OIDC trusted publishing
       - run: npm install -g npm@latest
