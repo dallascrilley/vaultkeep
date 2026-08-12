@@ -63,8 +63,7 @@ Jump to [Installation](#installation), the
 
 ## Installation
 
-Install from source. This is the only path that gives you the build this
-README describes:
+**From source** (recommended until `dc-ops-cli@1.14.3` or newer is on npm):
 
 ```bash
 git clone https://github.com/dallascrilley/vaultkeep.git
@@ -72,29 +71,25 @@ cd vaultkeep
 npm install && npm run build && npm link
 ```
 
-**Why not `npm install -g dc-ops-cli` right now.** The latest npm release
-(1.14.2, published 2026-01-28) predates the Vaultkeep rebrand and the security
-work this README and [SECURITY.md](SECURITY.md) describe: the published build
-still passes secret values to `op` through argv, writes `ops export` files with
-default permissions, and exits before the `ops copy` clipboard clear fires. Its
-registry metadata also still points at the repository's old name. The release
-pipeline is currently broken, so no fixed build has reached npm yet. Both
-builds print `1.14.2` from `ops --version`, so the version string cannot tell
-you which one you have; what npm serves is current only once a version newer
-than 1.14.2 appears there. I will remove this caveat when that release lands.
+**From npm** (package name `dc-ops-cli`, binary `ops`):
+
+```bash
+npm install -g dc-ops-cli
+```
+
+npm still serves **1.14.2** (January 2026). That build predates the Vaultkeep
+rebrand and the security fixes in this tree: secret values on `op` argv, world-readable
+export files, and a clipboard clear race on `ops copy`. Prefer the source install
+above until `npm view dc-ops-cli version` reports **1.14.3** or higher. The
+installed name stays `dc-ops-cli` / `ops` so existing scripts keep working.
 
 ## Update
 
-For a source install, update with:
-
 ```bash
-git pull && npm install && npm run build
+git pull && npm install && npm run build   # source install
+# or, once 1.14.3+ is on npm:
+npm install -g dc-ops-cli@latest
 ```
-
-`ops update` reinstalls from npm, which today means the stale 1.14.2 build
-described above; it would silently replace a source install with the old
-behavior. Leave it alone (including `--check` and `--force`) until a release
-newer than 1.14.2 is on npm.
 
 ## Prerequisites
 

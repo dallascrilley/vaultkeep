@@ -41,15 +41,22 @@ jobs:
       # heals the state semantic-release leaves when the npm publish step
       # fails after the release commit and tag were already pushed.
       - name: Catch-up publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           V="$(node -p "require('./package.json').version")"
           if npm view "dc-ops-cli@${V}" version >/dev/null 2>&1; then
             echo "dc-ops-cli@${V} already on npm; nothing to catch up"
           else
-            npm publish
+            echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$HOME/.npmrc"
+            npm publish --access public
           fi
 
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$HOME/.npmrc"
+          npx semantic-release
