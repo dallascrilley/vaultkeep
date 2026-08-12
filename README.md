@@ -670,7 +670,6 @@ npm run build
 - [QUICKSTART.md](QUICKSTART.md) - five minute walkthrough
 - [EXAMPLES.md](EXAMPLES.md) - longer worked examples
 - [CHANGELOG.md](CHANGELOG.md) - release history
-- [docs/TESTING_REPORT.md](docs/TESTING_REPORT.md) and [docs/FRICTION_REPORT.md](docs/FRICTION_REPORT.md) - the manual test pass and friction log that drove several releases
 
 ## License
 

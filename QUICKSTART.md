@@ -122,25 +122,21 @@ ops export --vault Development --output .env.dev
 ops export --vault Production --output .env.prod
 ```
 
-## Integration with AGENTS.md Pattern
+## Scripting and automation
 
-This tool implements the pattern from §13 of AGENTS.md:
+Prefer resolving secrets at process start instead of pasting them into env files:
 
 ```bash
-# When an agent needs a secret, it should:
+# Resolve once, then run a tool that needs the value in its environment
+export OPENAI_API_KEY="$(ops get OPENAI_API_KEY --silent)"
+curl -H "Authorization: Bearer $OPENAI_API_KEY" https://api.openai.com/v1/models
 
-# 1. Check 1Password first (never ask user directly)
-API_KEY=$(ops get OPENAI_API_KEY --silent 2>/dev/null)
-
-# 2. If not found, the tool prompts automatically
-if [ -z "$API_KEY" ]; then
-  # ops get will prompt the user to create it
-  API_KEY=$(ops get OPENAI_API_KEY --silent)
-fi
-
-# 3. Use the secret
-curl -H "Authorization: Bearer $API_KEY" https://api.openai.com/v1/models
+# Or inject a mapped set of secrets for a single command
+ops run -- npm start
 ```
+
+If the item is missing, `ops get` can prompt you to create it (interactive use).
+In CI, use a 1Password service account token and fail closed when a secret is absent.
 
 ## Next Steps
 
