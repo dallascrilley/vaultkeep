@@ -40,6 +40,18 @@ terminal scrollback, CI logs, and any file you redirect output into.
 `(secret value hidden)` per injected key instead of the value
 (`src/commands/run.ts:186`).
 
+### The clipboard clear actually fires
+
+`ops copy` stays in the foreground until its TTL expires (default 30 seconds),
+then clears the clipboard and confirms it. It also clears on `SIGINT`/`SIGTERM`.
+It only clears if the clipboard still holds the value it wrote, so it will not
+wipe something you copied in the meantime. `--ttl 0` opts out of clearing
+entirely and returns immediately.
+
+Two things still limit this. If the process is killed with `SIGKILL`, or the
+machine loses power, nothing runs and the value stays on the clipboard. And a
+clipboard manager that keeps history may retain the value even after the clear.
+
 ### No log files
 
 Vaultkeep writes no log, trace, or debug file. There is no verbose mode that
@@ -61,46 +73,71 @@ Two files, both created with mode `0600` inside a directory created `0700`:
   descriptions, and the list of field *names* a template prompts for. It
   contains no values.
 
+## How writes reach `op`
+
+`ops set`, `ops import`, and `ops template apply` hand the new value to `op` on
+**stdin**, as an item JSON template (`op item create -` for a new item, piped
+input for `op item edit`). Argv carries only item titles, vault names, and
+flags, so a secret value is never visible to other local users through `ps` or
+`/proc`, and never lands in a shell history file.
+
+Failures are reported without the value. Node's `execFileSync` embeds the full
+argv in `error.message`, so Vaultkeep never surfaces that message: it rebuilds
+the command from redacted arguments and quotes only `op`'s stderr, with any
+known secret value stripped first. A failed write prints, for example:
+
+```
+Error: Failed to set secret: `op item create - --vault NoSuchVault` failed (exit code 1) - [ERROR] "NoSuchVault" isn't a vault in this account
+```
+
+`ops run` remains unaffected: it injects secrets through the child process
+environment, never argv (`src/commands/run.ts:191-198`). Reads are also
+unaffected, since their argv carries only item titles and `op://` references.
+
 ## Known limitations
 
 These are real, currently unfixed, and easy to confirm from the source. They
 are listed rather than omitted so you can decide whether they matter for your
 threat model.
 
-### 1. Secret values are passed to `op` as command-line arguments on writes
+### 1. An update rewrites the whole item through a JSON template
 
-`ops set`, `ops import`, and `ops template apply` deliver a new value to `op`
-as a `field=value` argv entry (`src/utils/op.ts:527`, `:565`, `:588`). For the
-lifetime of that short-lived subprocess, the value is visible to other local
-users through `ps` and `/proc`. Vaultkeep does not use stdin or an environment
-variable for this path.
+Because a value can only be assigned off-argv through a template, an update
+reads the item with `op item get --format=json`, changes the one field, and
+pipes the whole document back to `op item edit`. `op` rejects a partial
+template, so the whole document really is required.
 
-This matters only on a machine where you do not trust every other local user.
-`ops run` is unaffected: it injects secrets through the child process
-environment, never argv (`src/commands/run.ts:191-198`). Reads are also
-unaffected, since their argv carries only item titles and `op://` references.
+Two consequences follow, and Vaultkeep refuses the write rather than let either
+happen silently:
 
-### 2. A failed write can echo the secret value into the error message
+- Anything `op item get` does not emit cannot survive the round-trip. File
+  attachments and Document items are refused. Passkeys arrive as a valueless
+  field of type `UNKNOWN`, and 1Password documents that a JSON template
+  overwrites them, so items holding one are refused too. Edit those in the
+  1Password app.
+- Values that come back masked are refused, since writing them back would
+  replace every other concealed field with its mask.
 
-Because of limitation 1, when the underlying `op item edit` or `op item create`
-exits non-zero, Node's `execFileSync` embeds the full argv into the thrown
-`error.message`. Vaultkeep wraps that message and prints it to stderr
-(`src/utils/op.ts:539`, `:570`, `:592`). The secret value can therefore appear
-in stderr on a failed `ops set`, `ops import`, or `ops template apply`.
+What is **not** guarded is a concurrent edit. The document is written back
+whole, so a change made to the same item between the read and the write -- from
+the 1Password app, another `ops` process, or a long `ops import` -- is reverted,
+including fields the command never touched. `op` performs no optimistic
+concurrency check. Avoid concurrent writers on one item; 1Password's item
+history can recover a clobbered version.
 
-Realistic triggers include a mistyped vault name, a locked or read-only item,
-an expired `op` session, or a network failure mid-write. If a write fails in an
-environment that captures stderr, such as CI, treat that value as exposed and
-rotate it.
+### 2. A new item created for a non-default field is an API Credential
 
-### 3. The clipboard clear is best-effort and usually does not fire
+`op` rejects a Password-category template whose built-in password field is
+empty, so `ops set NAME --field api_key` creates an API Credential item holding
+a single named concealed field instead of a Password item with an empty
+password. The value stays readable at `op://<vault>/<item>/<field>`. Items
+created for the default `password` field are unchanged.
 
-`ops copy` schedules a clipboard clear after a TTL (default 30 seconds) and on
-`SIGINT`/`SIGTERM`, but the timer is `unref()`'d
-(`src/commands/copy.ts:133-140`). Nothing else holds the event loop open, so a
-normal one-shot `ops copy` exits before the timer runs. In practice the secret
-stays on your clipboard until something overwrites it. Do not rely on the TTL;
-clear the clipboard yourself when it matters.
+### 3. Secrets are exposed by design on the read path
+
+This is unchanged and worth restating: `ops get`, `ops get-many`, `ops export`,
+and `ops copy` exist to move values out of the vault. See "What the tool does
+with secret values" above.
 
 ## Scope
 
@@ -110,8 +147,8 @@ somewhere unintended, and dependency vulnerabilities that are reachable in
 practice.
 
 Out of scope: vulnerabilities in the 1Password CLI or service (report those to
-[1Password](https://bugcrowd.com/agilebits)), the three documented limitations
-above unless you have a materially worse exploitation path than described, and
+[1Password](https://bugcrowd.com/agilebits)), the documented limitations above
+unless you have a materially worse exploitation path than described, and
 anything requiring an attacker who already has your unlocked account or root on
 your machine.
 
@@ -119,7 +156,7 @@ your machine.
 
 - Keep the `op` CLI current; Vaultkeep inherits its security properties.
 - Prefer `ops run` over `ops export` when a process just needs values in its
-  environment. It avoids both argv exposure and a plaintext file on disk.
+  environment. It avoids a plaintext file on disk.
 - Treat any file produced by `ops export` as a secret. Delete it when done and
   keep it out of version control.
 - Set `OPS_NO_SESSION_CACHE=1` on shared or long-lived machines.
